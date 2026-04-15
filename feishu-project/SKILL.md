@@ -56,35 +56,17 @@ list_workitem_types(project_key="...")
 
 ### 3. Choose the Right Tool
 
-| User Intent              | Primary Tool                              |
-|--------------------------|-------------------------------------------|
-| 查看空间信息             | `search_project_info`                     |
-| 查看工作项类型列表       | `list_workitem_types`                     |
-| 查看单个工作项概况       | `get_workitem_brief`                      |
-| 按条件搜索工作项         | `search_by_mql`                           |
-| 查看我的待办 / 已办      | `list_todo`                               |
-| 查看视图下的工作项       | `get_view_detail`                         |
-| 搜索视图                 | `search_view_by_title`                    |
-| 查看字段配置（含枚举值） | `list_workitem_field_config`              |
-| 查看角色配置             | `list_workitem_role_config`               |
-| 查看节点详情 / 子任务    | `get_node_detail`                         |
-| 查看评论                 | `list_workitem_comments`                  |
-| 查看操作记录             | `get_workitem_op_record`                  |
-| 查看排期 / 工作量        | `list_schedule`                           |
-| 查看团队列表             | `list_project_team`                       |
-| 查看团队成员             | `list_team_members`                       |
-| 查看用户信息             | `search_user_info`                        |
-| 查看图表                 | `list_charts` / `get_chart_detail`        |
-| 查看工时记录             | `get_workitem_man_hour_records`           |
-| 查看关联工作项           | `list_related_workitems`                  |
-| 查看状态流转             | `get_transitable_states`                  |
-| 创建工作项               | `create_workitem`                         |
-| 修改工作项字段           | `update_field`                            |
-| 修改节点                 | `update_node`                             |
-| 修改子任务               | `update_node_subtask`                     |
-| 节点流转 / 回滚          | `transition_node`                         |
-| 添加评论                 | `add_comment`                             |
-| 创建 / 更新固定视图      | `create_fixed_view` / `update_fixed_view` |
+Route to the appropriate reference document by category:
+
+| Category | Covers | Reference |
+|----------|--------|-----------|
+| Space & Metadata | 空间信息、工作项类型、字段/角色配置、关联关系定义 | `references/space-metadata.md` |
+| Work Items | 查询、创建、修改、状态流转（状态流工作项） | `references/work-items.md` |
+| Views & Charts | 视图搜索/详情、图表、固定视图管理 | `references/views-charts.md` |
+| Nodes & Subtasks | 节点详情、子任务 CRUD、节点流转/回滚（节点流工作项） | `references/nodes-subtasks.md` |
+| Teams & Users | 团队列表/成员、用户信息查询、排期/工作量 | `references/teams-users.md` |
+| Activity | 评论列表/添加、操作记录、工时登记 | `references/activity.md` |
+| MQL Queries | 复杂条件搜索语法 | `references/mql-guide.md` |
 
 ### 4. Present Results
 
@@ -129,24 +111,15 @@ get_workitem_brief(work_item_id="<id>", project_key="<key>",
                    fields=["name", "current_status_name", "priority", ...])
 ```
 
-Pass specific field keys to retrieve only relevant fields. Omit `fields` to get defaults.
+Pass specific field keys to retrieve only relevant fields. See **`references/work-items.md`** for querying patterns including MQL and todo list.
 
 ### Creating Work Items
 
-Before creating, **must** call:
-
-1. `list_workitem_field_config` with `field_keys=["template"]` to find the template ID (required).
-2. `list_workitem_field_config` to discover required fields and their enum values.
-3. `list_workitem_role_config` if roles are involved.
-
-Then call `create_workitem` with all required fields including the template.
+See **`references/work-items.md`** for the required preparation steps and field format reference.
 
 ### Updating Work Items
 
-- Use `update_field` for field value changes.
-- Use `update_node` for node schedule, owners, and custom fields on nodes.
-- Use `update_node_subtask` for creating / modifying / completing subtasks.
-- Use role_operate in `update_field` for role membership changes (not `role_owners` field).
+See **`references/work-items.md`** for field update patterns and **`references/nodes-subtasks.md`** for node/subtask updates.
 
 ### Working with URLs
 
@@ -186,5 +159,10 @@ than the page size.
 
 ### Reference Files
 
+- **`references/space-metadata.md`** — Space info, work item types, field/role configs, relation definitions.
+- **`references/work-items.md`** — Querying, creating, and updating work items; field type reference; todo list.
+- **`references/views-charts.md`** — Views search/detail, chart listing, fixed view management.
+- **`references/nodes-subtasks.md`** — Node detail, subtask CRUD, node/state transitions.
+- **`references/teams-users.md`** — Team lists, team members, user info lookup, schedule/workload.
+- **`references/activity.md`** — Comments, operation records, man-hour logs.
 - **`references/mql-guide.md`** — Full MQL syntax, functions, field type mapping, and query examples.
-- **`references/tool-reference.md`** — Quick lookup mapping user intents to tool names with parameter hints.
