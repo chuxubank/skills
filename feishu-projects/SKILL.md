@@ -1,5 +1,5 @@
 ---
-name: feishu-project
+name: feishu-projects
 description: >-
   This skill should be used when the user asks to "查看飞书项目", "查看需求",
   "查看缺陷", "查看任务", "我的待办", "搜索工作项", "查看视图", "查看空间信息",
