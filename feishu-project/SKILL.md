@@ -4,6 +4,7 @@ description: >-
   This skill should be used when the user asks to "查看飞书项目", "查看需求",
   "查看缺陷", "查看任务", "我的待办", "搜索工作项", "查看视图", "查看空间信息",
   "查看排期", "查看评论", "查看操作记录", "查看团队", "创建工作项", "修改工作项",
+  "资源库", "交付物", "上传附件", "下载附件",
   or any request related to Feishu/Lark project management (飞书项目/Meego).
   Provides workflows for querying, creating, and updating work items using
   the feishu MCP tools.
@@ -66,7 +67,9 @@ Route to the appropriate reference document by category:
 | Nodes & Subtasks | 节点详情、子任务 CRUD、节点流转/回滚（节点流工作项） | `references/nodes-subtasks.md` |
 | Teams & Users | 团队列表/成员、用户信息查询、排期/工作量 | `references/teams-users.md` |
 | Activity | 评论列表/添加、操作记录、工时登记 | `references/activity.md` |
-| MQL Queries | 复杂条件搜索语法 | `references/mql-guide.md` |
+| Resource Work Items | 资源库配置、资源实例创建、从资源创建工作项、交付物查询 | `references/resource-work-items.md` |
+| Attachments | 附件上传/下载、分片上传、富文本图片 | `references/attachments.md` |
+| MQL Queries | 复杂条件搜索语法（含节点/关联/状态时间高级函数） | `references/mql-guide.md` |
 
 ### 4. Present Results
 
@@ -165,4 +168,6 @@ than the page size.
 - **`references/nodes-subtasks.md`** — Node detail, subtask CRUD, node/state transitions.
 - **`references/teams-users.md`** — Team lists, team members, user info lookup, schedule/workload.
 - **`references/activity.md`** — Comments, operation records, man-hour logs.
+- **`references/resource-work-items.md`** — Resource library config, resource instance CRUD, deliverables.
+- **`references/attachments.md`** — File upload/download, multipart upload, rich text images.
 - **`references/mql-guide.md`** — Full MQL syntax, functions, field type mapping, and query examples.

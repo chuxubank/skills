@@ -77,8 +77,24 @@ Mapping of common user intents to the correct `mcp__feishu__*` tool, with key pa
 
 | Intent | Tool | Key Params |
 |--------|------|------------|
-| 查看关联工作项 | `list_related_workitems` | `project_key`, `work_item_type`, `work_item_id`, `relation_work_item_type_key`, `relation_key` |
+| 查看关联工作项 | `list_related_workitem` | `project_key`, `work_item_id`, `relation_field_key`(optional), `relation_id`(optional) |
 | 查看关联关系定义 | `list_workitem_relations` | `project_key` |
+
+## Resource Work Items (资源库)
+
+| Intent | Tool | Key Params |
+|--------|------|------------|
+| 查看资源库配置 | `get_resource_work_item_type_conf` | `project_key`, `work_item_type_key` |
+| 创建资源库实例 | `create_resource_work_item` | `project_key`, `work_item_type_key`, `fields`, `template_id`(optional) |
+| 从资源库创建普通工作项 | `create_work_item_from_resource` | `project_key`, `work_item_id` (resource ID), `name`(optional), `fields`(optional) |
+| 查询交付物信息 | `list_deliverables` | `project_key`, `work_item_ids` |
+
+## Attachments (附件)
+
+| Intent | Tool | Key Params |
+|--------|------|------------|
+| 上传附件（获取上传URL） | `upload_file` | `project_key`, `work_item_id`, `file_name`, `mime_type`, `size`, `resource_type` |
+| 获取附件下载URL | `get_download_url` | `file_url`, `project_key`(optional), `work_item_id`(optional) |
 
 ## URL Parameter Extraction
 
