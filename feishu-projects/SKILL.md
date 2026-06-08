@@ -25,14 +25,31 @@ Before any query, determine the **project_key** (空间标识). Resolve in this 
 1. A URL the user provides (extract `project_key` from the URL path)
 2. The user naming the space directly — pass the name to `search_project_info`
 3. Prior conversation context
-4. **Fallback:** Read `.agents/constant.md` in the current project directory and extract `feishu-project-key` from it
+4. **Fallback:** Read project-local configuration files and extract a Feishu Project key.
+   Check these files in order, if they exist:
+   - `.agents/constant.md`
+   - `.agents/constants.md`
+   - `local.properties`
+   - `.env`
+   - `.env.local`
+
+   Recognize any of these keys:
+   - `feishu-project-key`
+   - `feishu_project_key`
+   - `FEISHU_PROJECT_KEY`
+   - `project_key`
 
 ```markdown
 # .agents/constant.md example
 - feishu-project-key: my_project_key
 ```
 
-When falling back to `.agents/constant.md`, read the file silently and use the value without asking the user. If the file does not exist or contains no `project_key`, then ask the user to provide one.
+```properties
+# local.properties example
+feishu-project-key=my_project_key
+```
+
+When using fallback files, read only the candidate key lines silently and use the first value found without asking the user. Do not print or expose unrelated local configuration values, secrets, tokens, or credentials. If none of the files exist or none contains a project key, then ask the user to provide one.
 
 ```
 search_project_info(project_key="<name or key>")
