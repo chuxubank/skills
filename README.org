@@ -1,2 +1,7 @@
 * Skills
 Misaka's agent skills
+
+** Available skills
+- =feishu-projects=: Query and manage Feishu Project work items through MCP.
+- =grok-build-subagent=: Delegate focused implementation to Grok Build CLI and
+  independently review and verify its changes.
