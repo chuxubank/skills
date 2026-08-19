@@ -60,7 +60,7 @@ actually run Grok rather than implement the task in its place.
 Use an absolute repository path and quote the prompt with a heredoc:
 
 ```bash
-/opt/homebrew/bin/grok -p "$(cat <<'EOF'
+grok -p "$(cat <<'EOF'
 Work in /absolute/path/to/repository.
 
 Task:
