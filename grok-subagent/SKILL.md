@@ -1,14 +1,13 @@
 ---
-name: grok-build-subagent
+name: grok-subagent
 description: >-
   Delegates focused software implementation to Grok Build CLI in headless mode,
   then reviews and verifies the result. Use when the user asks to use Grok,
   Grok Build, grok -p, or a Grok subagent to implement, refactor, test, or
   investigate code.
-version: 0.1.0
 ---
 
-# Grok Build Subagent
+# Grok Subagent
 
 Use Grok as an implementation worker. The parent agent owns scope, review,
 verification, commits, and external publication.
@@ -22,14 +21,16 @@ Run:
 ```bash
 grok --version
 grok --help
+jq --version
 ```
 
-Prefer the flags reported by the installed binary. Grok Build 1.0.4 uses:
+Prefer the flags reported by the installed binary. Grok Build 1.0.5 uses:
 
 - `-p, --single <PROMPT>` for one headless turn
 - `--prompt-file <PATH>` for a prompt file
 - `--cwd <PATH>` for the working directory
-- `--permission-mode acceptEdits` for implementation
+- `--permission-mode auto` for non-interactive implementation
+- `--output-format json` to expose the real stop reason
 - `--no-subagents` to prevent nested delegation
 
 Other projects named Grok CLI use incompatible flags such as `--prompt` and
@@ -57,10 +58,12 @@ When the host supports shell subagents, delegate this invocation to one so the
 parent remains available to orchestrate other work. The shell subagent must
 actually run Grok rather than implement the task in its place.
 
-Use an absolute repository path and quote the prompt with a heredoc:
+Use an absolute repository path and quote the prompt with a heredoc. Capture
+JSON because Grok Build 1.0.5 can exit with status 0 even when a tool call is
+cancelled:
 
 ```bash
-grok -p "$(cat <<'EOF'
+grok_result=$(grok -p "$(cat <<'EOF'
 Work in /absolute/path/to/repository.
 
 Task:
@@ -80,13 +83,23 @@ Return changed files, design decisions, test results, and unresolved risks.
 EOF
 )" \
   --cwd "/absolute/path/to/repository" \
-  --permission-mode acceptEdits \
-  --no-subagents
+  --permission-mode auto \
+  --no-subagents \
+  --output-format json)
+
+printf '%s\n' "$grok_result"
+printf '%s\n' "$grok_result" | jq -e '.stopReason == "end_turn"' >/dev/null
 ```
 
 Use `command -v grok` when the executable path is unknown. Use
 `--prompt-file` for very long generated prompts. Keep credentials, tokens, and
-private data out of prompts.
+private data out of prompts. Do not replace `auto` with `bypassPermissions`;
+keep the delegated working directory and task boundary narrow instead.
+
+Treat `cancelled`, `max_turns`, missing output, invalid JSON, or any other stop
+reason as a failed invocation even when the process exits with status 0. For a
+mutation task, also require the expected repository delta; `end_turn` without
+the requested files or behavior is not success.
 
 ### 4. Review centrally
 
@@ -116,9 +129,11 @@ If review finds a defect, send Grok a narrow correction containing:
 Resume the same host shell subagent when practical so it retains implementation
 context. Run Grok again inside that subagent, then repeat central review.
 
-If Grok stalls or exits without edits, inspect its output and repository state.
-Retry once with a smaller task and sharper completion criteria. Do not repeat
-the same invocation without new evidence.
+If Grok stalls or exits without edits, inspect `.stopReason`, its output, and
+repository state. `cancelled` after a proposed tool call usually indicates a
+permission-mode mismatch. Retry once only after changing the evidenced cause,
+or with a smaller task and sharper completion criteria. Do not repeat the same
+invocation without new evidence.
 
 ## Prompt checklist
 
@@ -137,7 +152,7 @@ the same invocation without new evidence.
 
 Report:
 
-- Grok command shape and CLI version
+- Grok command shape, CLI version, and JSON stop reason
 - implementation summary
 - files changed or deleted
 - independent test/build results

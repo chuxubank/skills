@@ -1,0 +1,3 @@
+interface:
+  display_name: "Agent Collaboration"
+  short_description: "Route multi-agent work to the smallest safe backend"
