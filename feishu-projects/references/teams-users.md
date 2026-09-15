@@ -1,35 +1,21 @@
-# Teams & Users Reference
+# Teams, Users, and Workload
 
-Tools for looking up team information, team members, user details, and personal schedules.
+| Intent | Tool |
+|---|---|
+| List/filter teams | `feishu_list_project_team` |
+| List team members | `feishu_list_team_members` |
+| Resolve names/emails/user keys | `feishu_search_user_info` |
+| Read personal schedule/workload | `feishu_list_schedule` |
 
-## Tool Map
+Resolve a team name by paging `feishu_list_project_team` and matching the result; the member API
+requires a team ID. Continue `feishu_list_team_members` with its returned `page_token`.
 
-| Intent | Tool | Key Params |
-|--------|------|------------|
-| 查看空间团队列表 | `list_project_team` | `project_key`, `query`(optional) |
-| 查看团队成员 | `list_team_members` | `project_key`, `team_id` |
-| 查看用户信息（名称/邮箱/key 转换） | `search_user_info` | `user_keys` (name, email, or user_key; max 20) |
-| 查看排期 / 工作量 | `list_schedule` | `project_key`, `user_keys`, `start_time`, `end_time`, `work_item_type_keys`(optional) |
+`feishu_search_user_info` accepts at most 20 names, emails, or keys. Use
+`current_login_user()` to resolve the current user. Request all statuses only when inactive people
+are relevant. Use returned `user_key` for work-item operations and `lark_user_id` for comment
+mentions.
 
-## Usage Notes
-
-### search_user_info
-
-Use this to convert a display name or email to a `user_key` before passing it to create/update tools.
-
-```
-search_user_info(user_keys=["张三", "zhangsan@example.com"])
-```
-
-Pass `user_keys=["current_login_user()"]` to look up the currently logged-in user.
-
-### list_project_team
-
-`list_project_team` does not support direct name lookup — use `query` as a keyword filter, then match by name from the returned list.
-
-### list_schedule
-
-- `start_time` and `end_time` must be in `YYYY-MM-DD` format.
-- Maximum range: 3 months.
-- Pass `work_item_type_keys=["_all"]` to include all work item types.
-- Returns per-user workload detail including node schedules, subtask times, and unscheduled task counts.
+`feishu_list_schedule` requires `YYYY-MM-DD` start/end dates, supports at most a three-month range
+and 20 users, and accepts `work_item_type_keys=["_all"]`. It returns per-user details and totals;
+summarize overload/idle conclusions from the returned estimates rather than inferring from item
+counts alone.

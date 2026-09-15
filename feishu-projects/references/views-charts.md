@@ -1,30 +1,18 @@
-# Views & Charts Reference
+# Views and Charts
 
-Tools for browsing views (视图) and inspecting embedded charts (图表).
+| Intent | Tool | Notes |
+|---|---|---|
+| Find view by title | `feishu_search_view_by_title` | requires space, scope, keyword |
+| Read ordinary view items | `feishu_get_view_detail` | accepts URL or view ID |
+| Read panorama view items | `feishu_list_multi_project_view_workitems` | use for URLs containing `multiProjectView` |
+| List charts in a view | `feishu_list_charts` | accepts URL or explicit locator |
+| Read chart | `feishu_get_chart_detail` | accepts URL or chart ID |
+| Create fixed view | `feishu_create_fixed_view` | at most 200 item IDs |
+| Add/remove fixed-view items | `feishu_update_fixed_view` | one direction per call, at most 200 IDs |
 
-## Tool Map
+For `feishu_search_view_by_title`, pass the actual `view_scope` required by the space/type; resolve
+custom type keys with `feishu_list_workitem_types` instead of assuming a display-name mapping.
 
-| Intent | Tool | Key Params |
-|--------|------|------------|
-| 按名搜索视图 | `search_view_by_title` | `project_key`, `view_scope`, `key_word` |
-| 查看视图详情 / 工作项列表 | `get_view_detail` | `view_id`, `project_key`(optional), `fields`(optional) |
-| 查看视图下图表列表 | `list_charts` | `project_key`, `view_id` |
-| 查看图表详情 | `get_chart_detail` | `chart_id`, `project_key`(optional) |
-| 创建固定视图 | `create_fixed_view` | `project_key`, `work_item_type`, `work_item_id_list`, `name` |
-| 更新固定视图（添加工作项） | `update_fixed_view` | `project_key`, `view_id`, `work_item_type`, `add_work_item_ids` |
-| 更新固定视图（移除工作项） | `update_fixed_view` | `project_key`, `view_id`, `work_item_type`, `remove_work_item_ids` |
-
-## `view_scope` Values for `search_view_by_title`
-
-| Work Item Type | view_scope |
-|----------------|------------|
-| 需求 (story) | `storyView` |
-| 缺陷 (issue) | `issueView` |
-| 版本 | `version` |
-| 自定义类型 | `<work_item_type_key>` |
-
-## Usage Notes
-
-- `get_view_detail` returns the work item list inside the view. Pass `fields` to control which columns are returned.
-- `update_fixed_view` cannot add and remove items in the same call — use separate calls.
-- `create_fixed_view` has a limit of 200 work item IDs per call.
+`feishu_get_view_detail` supports field selection and page numbers. Panorama views use their own
+API and return 50 items per page. Continue only when the user requests complete results or the
+response indicates more data is needed.

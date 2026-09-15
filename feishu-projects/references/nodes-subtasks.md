@@ -1,43 +1,40 @@
-# Nodes & Subtasks Reference
+# Nodes and Subtasks
 
-Tools for inspecting flow nodes (节点), managing subtasks (子任务), and driving state/node transitions.
+| Intent | Tool |
+|---|---|
+| Inspect node fields/subtasks | `feishu_get_node_detail` |
+| Update node owners, fields, schedule | `feishu_update_node` |
+| Create/update/complete/rollback subtask | `feishu_update_node_subtask` |
+| Complete/rollback node | `feishu_transition_node` |
+| Inspect transition requirements | `feishu_get_transition_required` |
 
-## Tool Map
+## Node updates
 
-| Intent | Tool | Key Params |
-|--------|------|------------|
-| 查看节点详情 | `get_node_detail` | `work_item_id`, `node_id_list`(optional), `field_key_list`(optional) |
-| 查看子任务 | `get_node_detail` | `work_item_id`, `need_sub_task=true` |
-| 创建子任务 | `update_node_subtask` | `node_id`, `action="create"`, `work_item_id`, `fields` |
-| 修改子任务 | `update_node_subtask` | `node_id`, `action="update"`, `task_id`, `work_item_id` |
-| 完成子任务 | `update_node_subtask` | `node_id`, `action="confirm"`, `task_id`, `work_item_id` |
-| 回滚子任务 | `update_node_subtask` | `node_id`, `action="rollback"`, `task_id`, `work_item_id` |
-| 修改节点（排期 / 负责人 / 字段） | `update_node` | `work_item_id`, `node_id`, `node_schedule`(optional), `node_owners`(optional), `fields`(optional) |
-| 节点流转（完成） | `transition_node` | `work_item_id`, `action="confirm"`, `node_id` or `node_ids` |
-| 节点回滚 | `transition_node` | `work_item_id`, `action="rollback"`, `node_id`, `rollback_reason` |
-| 查询可流转状态（状态流） | `get_transitable_states` | `project_key`, `work_item_id`, `work_item_type`, `user_key` |
-| 查询流转所需必填项 | `get_transition_required` | `project_key`, `work_item_id`, `state_key` |
-| 查看评审状态 / 结论 | `list_finished_info` | `project_key`, `work_item_id`, `node_ids` |
-| 更新评审结论 / 意见 | `update_finished_info` | `project_key`, `work_item_id`, `node_id` |
+Resolve custom node fields with `feishu_list_node_field_config`. If assigning a person-specific
+schedule or changing a person-bound node field, add that person to `node_owners` first.
 
-## update_node
+Every `node_schedule` or `schedules` entry must explicitly set `clear_schedule`:
 
-Do **not** mix `node_schedule`, `schedules` (differential scheduling), and `node_owners` in the same call — update them separately.
+- `false`: incremental merge; omitted schedule values remain unchanged. Use this by default.
+- `true`: overwrite/clear semantics; omitted values may be cleared. Before using it, call
+  `feishu_get_node_detail` and resend every schedule value that must be preserved. Use `null` for
+  the value the user explicitly asked to clear.
 
-To clear a schedule, pass an empty object: `node_schedule={}`.
+Do not represent clearing as an empty schedule object. Dates are local-day epoch milliseconds.
 
-## update_node_subtask
+## Subtasks
 
-The `work_item_id` parameter means different things by action:
+`feishu_update_node_subtask` always needs the parent work item's node ID. Creation requires a
+`name` field. Update/confirm/rollback also require the `task_id` returned for the subtask.
+`work_item_id` identifies the work item that owns the node; use a URL when available to avoid
+manual locator mistakes. Resolve configured subtask fields from the `sub_task` field config.
 
-| Action | `work_item_id` value |
-|--------|----------------------|
-| `create` | Parent work item ID |
-| `update` / `confirm` / `rollback` | Subtask's own ID |
+## Transitions
 
-`task_id` is the subtask ID returned by `create` and required for all subsequent operations.
+- Node-flow item: optionally inspect requirements, then call `feishu_transition_node` with one
+  `node_id` and `action="confirm"` or `action="rollback"`; rollback requires a reason.
+- State-flow item: use `feishu_get_transitable_states` and `feishu_transition_state` as described
+  in `work-items.md`.
 
-## Transition vs. State Flow
-
-- **Node-based work items** (节点流，e.g. 需求/story): use `transition_node`.
-- **State-based work items** (状态流，e.g. 缺陷/issue): use `get_transitable_states` → `transition_state`.
+The current MCP has no standalone finished-review read/update tools. Read configured completion
+fields through node detail and update supported node fields through `feishu_update_node`.

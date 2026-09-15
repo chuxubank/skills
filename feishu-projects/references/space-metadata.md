@@ -1,21 +1,22 @@
-# Space & Metadata Reference
+# Space and Metadata
 
-Tools for inspecting space configuration, work item types, field/role schemas, and relations.
+| Intent | Tool |
+|---|---|
+| Resolve/validate space name, key, or URL | `feishu_search_project_info` |
+| List work-item types | `feishu_list_workitem_types` |
+| Resolve work-item fields/options/templates | `feishu_list_workitem_field_config` |
+| Resolve work-item roles | `feishu_list_workitem_role_config` |
+| List configured relation definitions | `feishu_list_workitem_relations` |
+| Resolve node fields/options | `feishu_list_node_field_config` |
+| Diagnose missing create requirements | `feishu_get_workitem_field_meta` |
 
-## Tool Map
+Use exact `field_keys`/`role_keys` when known. Use `field_query`/`role_query` only for discovery;
+when discovery returns multiple plausible matches, ask the user to choose.
 
-| Intent | Tool | Key Params |
-|--------|------|------------|
-| 查看空间基础信息 | `search_project_info` | `project_key` |
-| 查看工作项类型列表 | `list_workitem_types` | `project_key` |
-| 查看字段配置 / 枚举值 | `list_workitem_field_config` | `project_key`, `work_item_type`, `field_keys`(optional), `field_query`(optional) |
-| 查看角色配置 | `list_workitem_role_config` | `project_key`, `work_item_type` |
-| 查看工作项关联关系定义 | `list_workitem_relations` | `project_key` |
-| 查看节点字段配置 | `list_node_field_config` | `project_key`, `work_item_type` |
-| 查看创建工作项元信息 | `get_workitem_field_meta` | `project_key`, `work_item_type` |
+Creation requires a template ID obtained from
+`feishu_list_workitem_field_config(field_keys=["template"])`. Call both field and role config
+before `feishu_create_workitem`. `feishu_get_workitem_field_meta` is a recovery tool after create
+failure or when required keys/values remain uncertain, not a replacement for configuration lookup.
 
-## Usage Notes
-
-- Call `list_workitem_field_config` **before** creating or updating work items to discover field keys and enum option IDs.
-- Call `list_workitem_role_config` whenever a create/update operation involves roles.
-- To find a template ID (required for `create_workitem`), call `list_workitem_field_config` with `field_keys=["template"]`.
+`feishu_list_workitem_relations` is for listing configured relationships. In MQL, when the user
+names a relation, preserve that exact name; do not use a fuzzy relation lookup to silently replace it.

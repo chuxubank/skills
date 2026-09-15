@@ -1,28 +1,27 @@
-# Activity Reference
+# Comments, History, and Man-hours
 
-Tools for reading work item comments, operation logs, and time (man-hour) records.
+| Intent | Tool |
+|---|---|
+| List comments | `feishu_list_workitem_comments` |
+| Create/update comment | `feishu_add_comment` |
+| Read operation history | `feishu_get_workitem_op_record` |
+| Read man-hour records | `feishu_get_workitem_man_hour_records` |
 
-## Tool Map
+## Comments
 
-| Intent | Tool | Key Params |
-|--------|------|------------|
-| 查看评论列表 | `list_workitem_comments` | `project_key`, `work_item_id`, `page_num`(optional) |
-| 添加评论 | `add_comment` | `work_item_id`, `comment_content`, `project_key`(optional) |
-| 查看操作记录 | `get_workitem_op_record` | `project_key`, `work_item_id` |
-| 查看工时登记记录 | `get_workitem_man_hour_records` | `project_key`, `work_item_type`, `work_item_id`, `page_num`(optional) |
+`feishu_add_comment` requires `project_key` and `work_item_id`. Set `action="create"` (default) with
+Markdown `content`, or `action="update"` with `comment_id`. A call carries either `content` or
+`file_token`, not both. Resolve mentions with `feishu_search_user_info` and use the returned
+`lark_user_id` in the documented mention block. Upload comment files/images first as described in
+`attachments.md`.
 
-## Usage Notes
+## Operation history
 
-### add_comment
+`feishu_get_workitem_op_record` supports module, operation, time, source, operator, and operator-type
+filters. `start` and `end` are epoch milliseconds. Continue pagination with the returned
+`start_from`; do not invent a fixed page-number rule.
 
-`comment_content` supports Markdown. Supports `url` parameter to auto-extract `work_item_id` and `project_key`.
+## Man-hours
 
-### get_workitem_op_record
-
-Supports filtering by:
-- `op_record_module`: `work_item_mod`, `node_mod`, `sub_task_mod`, `field_mod`, `role_and_user_mod`, `baseline_mod`
-- `operation_type`: `modify`, `create`, `delete`, `terminate`, `restore`, `complete`, `rollback`, `add`, `remove`
-- `operator`: user_key list
-- `start` / `end`: millisecond timestamps (max 7-day range per query)
-
-Use `start_from` for pagination (value returned by each response).
+`feishu_get_workitem_man_hour_records` requires the space and item ID; provide the work-item type
+when known. It paginates by `page_num`.

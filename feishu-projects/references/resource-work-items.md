@@ -1,105 +1,32 @@
-# Resource Work Items Reference (资源库)
+# Resource Work Items and Deliverables
 
-Tools for managing resource library instances (资源库/资源实例) and deliverables (交付物).
+| Intent | Tool |
+|---|---|
+| Inspect resource-library fields/roles | `feishu_get_resource_work_item_type_conf` |
+| Create resource instance/template | `feishu_create_resource_work_item` |
+| Find resource instances | `feishu_search_by_mql` with `_<type_key>_resource` table |
+| List node/task element templates | `feishu_list_element_template` |
+| Attach an existing resource instance to WBS | `feishu_edit_wbs_draft` (`AddResourceSubInstanceRows`) |
+| Trace deliverable root/source items | `feishu_list_deliverables` |
 
-Resource work items are a special type of work item that act as reusable templates.
-When a work item type has the resource library feature enabled, you can create resource
-instances and then spawn regular work items from them.
+Before creating a resource instance, call `feishu_get_resource_work_item_type_conf` and use only
+its exact resource field and role keys. `template_id` is optional; when omitted, the service selects
+the type's first workflow template. Field value shapes differ from ordinary create for some options:
+follow the live `feishu_create_resource_work_item` schema, including `{value,label}` option objects.
 
-## Tool Map
+There is no current `create_work_item_from_resource` tool. Creating a resource instance and adding
+one to a WBS are distinct operations; use the WBS operation above for the latter.
 
-| Intent | Tool | Key Params |
-|--------|------|------------|
-| 查看资源库配置（字段/角色） | `get_resource_work_item_type_conf` | `project_key`, `work_item_type_key` |
-| 创建资源库实例 | `create_resource_work_item` | `project_key`, `work_item_type_key`, `fields`, `template_id`(optional) |
-| 从资源库创建普通工作项 | `create_work_item_from_resource` | `project_key`, `work_item_id` (resource instance ID), `name`(optional), `fields`(optional) |
-| 查询交付物信息 | `list_deliverables` | `project_key`, `work_item_ids` |
-
-## Workflow
-
-### 1. Check Resource Library Configuration
-
-Before creating a resource instance, call `get_resource_work_item_type_conf` to discover
-available resource fields and roles:
-
-```
-get_resource_work_item_type_conf(
-    project_key="<key>",
-    work_item_type_key="story"
-)
-```
-
-Returns configured resource field info (field key, type, name) and role info.
-
-### 2. Create a Resource Instance
-
-Use `create_resource_work_item`. The `template_id` is required — use
-`list_workitem_field_config` with `field_keys=["template"]` to find available templates.
-
-```
-create_resource_work_item(
-    project_key="<key>",
-    work_item_type_key="story",
-    template_id="<template_id>",
-    fields=[
-        {"field_key": "name", "field_value": "Resource Name"},
-        ...
-    ]
-)
-```
-
-Field values follow the same format as `create_workitem` — see `work-items.md` for the
-field type reference.
-
-Returns a link to the created resource instance on success.
-If the work item type does not have the resource library enabled, returns an error.
-
-### 3. Create a Regular Work Item from a Resource Instance
-
-```
-create_work_item_from_resource(
-    project_key="<key>",
-    work_item_id="<resource_instance_id>",
-    name="New Work Item Name",
-    fields=[
-        {"field_key": "priority", "field_value": "P0"},
-        ...
-    ]
-)
-```
-
-- `work_item_id` is the resource instance ID (from step 2 or from a URL).
-- `name` is optional; when the name is a resource field, it will be ignored.
-- `fields` are additional fields to set on the new work item.
-
-Returns a link to the newly created work item on success.
-
-### 4. Query Deliverables
-
-For work items that have deliverables (交付物), use `list_deliverables` to query
-the root work item (所属项目) and source work item (来源工作项) info:
-
-```
-list_deliverables(
-    project_key="<key>",
-    work_item_ids=["<id1>", "<id2>"]
-)
-```
-
-## MQL: Querying Resource Instances
-
-To query resource instances via MQL, use the special table name format:
+Resource MQL table:
 
 ```sql
 SELECT `work_item_id`, `name`
-FROM `<space>`.`_<work_item_type_key>_resource`
-WHERE <conditions>
+FROM `Space`.`_<work_item_type_key>_resource`
+WHERE `name` like '%keyword%'
 ```
 
-Example — query all resource instances under the "story" type:
+For resource nodes/tasks, call `feishu_list_element_template` with `element_type="node"` or
+`"task"` and pass the returned `element_key` to the corresponding WBS add operation.
 
-```sql
-SELECT `work_item_id`, `name`
-FROM `MySpace`.`_story_resource`
-WHERE `name` like '%模板%'
-```
+`feishu_list_deliverables` accepts deliverable item IDs and returns each deliverable's root work
+item and direct source work item. Resolve names to IDs first with `feishu_get_workitem_brief`.

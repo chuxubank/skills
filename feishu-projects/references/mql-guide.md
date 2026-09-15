@@ -1,16 +1,17 @@
 # MQL Query Guide for Feishu Project
 
-MQL (Meego Query Language) is used with `search_by_mql` to perform complex queries
+MQL (Meego Query Language) is used with `feishu_search_by_mql` to perform complex queries
 against Feishu Project workspaces.
 
 ## Prerequisites
 
-**Always** call `list_workitem_field_config` before writing MQL to:
-- Discover actual field keys (e.g. `field_xxx` or built-in names like `name`, `priority`)
-- Get enum option IDs for select/radio fields
-- Understand field types to use correct MQL syntax
+Identify the target space and target work-item type before composing MQL. Query
+`feishu_list_workitem_field_config` when the request refers to fields, options, or types that need
+verification. If roles are involved, query `feishu_list_workitem_role_config`. For controls,
+relations, and nodes, use the special syntax below. Preserve user-provided relation names exactly.
 
-If the query involves roles, also call `list_workitem_role_config`.
+Do not use `SELECT *`; list only the fields needed for the answer. Every field name in `SELECT` and
+`WHERE` must be enclosed in backticks.
 
 ## Basic Syntax
 
@@ -22,7 +23,7 @@ WHERE conditionExpression
 [LIMIT [offset,] row_count]
 ```
 
-- Identifiers (field names, space names, type names) are wrapped in backticks.
+- Field and table identifiers are wrapped in backticks; this is mandatory in `SELECT` and `WHERE`.
 - String values use single quotes.
 - Prefer field keys over field display names for reliability.
 
@@ -149,15 +150,18 @@ WHERE `__QA` = '李四'
 
 ## Pagination
 
-`search_by_mql` returns paginated results (50 per page by default).
+`feishu_search_by_mql` returns at most 50 rows for each group page.
 
-- First call: omit `group_pagination_list`; response includes `session_id` and `count`.
-- Subsequent pages: pass the `session_id` from the first response and set `page_num`.
+- First call: pass `mql` and omit `session_id`.
+- Later pages: pass the returned `session_id`, set `mql` to an empty string, and use the returned
+  `group_id` in `group_pagination_list` with the next `page_num`.
+- Use the returned group count to determine whether another page exists.
 
 ```python
 # Page 2
-search_by_mql(
+feishu_search_by_mql(
     project_key="...",
+    mql="",
     session_id="<session_id from first call>",
     group_pagination_list=[{"group_id": "<group_id>", "page_num": 2}]
 )
