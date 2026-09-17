@@ -2,7 +2,6 @@
 Misaka's agent skills
 
 ** Available skills
-- =aep=: Parse After Effects `.aep` files on disk via `py-aep`.
 - =agent-collaboration=: Route requested multi-agent work across focused
   delegation, Pi subagents, and Herdr with one clear owner.
 - =feishu-projects=: Query and manage Feishu Project work items through MCP.
