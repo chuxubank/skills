@@ -2,8 +2,6 @@
 Misaka's agent skills
 
 ** Available skills
-- =agent-collaboration=: Route requested multi-agent work across focused
-  delegation, Pi subagents, and Herdr with one clear owner.
 - =bugfix-delivery=: Deliver Feishu Project bug fixes through Worktrunk,
   Luvus-managed Pi execution, GitLab MR gates, status comments, and cleanup.
 - =feishu-projects=: Query and manage Feishu Project work items through MCP.
