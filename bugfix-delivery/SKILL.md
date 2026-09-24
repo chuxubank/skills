@@ -12,6 +12,18 @@ description: >-
 完成飞书 Bug 从代码到 GitLab、测试和回归的交付闭环。分支、目标分支、空间、人员、
 状态和 transition ID 全部从当前事实解析；示例中的变量均为占位符。
 
+## 所有权：主 Agent 只派单
+
+主 Agent 只负责建立或复用安全的 Worktrunk worktree、把已有修复迁入、在该 worktree 启动或
+复用一个 Luvus Pi agent，并通过一次无等待 `agent send` 下发完整阶段任务。发送成功后立即结束
+当前轮次，不等待 worker、不轮询 pipeline/QA/MR，也不自行操作 GitLab、Meegle 评论或状态。
+
+worktree Agent 是交付 owner，负责解析 Bug 管理类型、修改和验证代码、提交/push、创建或更新
+MR、检查 pipeline 和 QA 门禁、合并、Meegle 评论与状态流转、回读验收以及获授权后的清理。
+每次只执行用户已授权的阶段；遇到 pipeline、QA、合并授权或其它外部门禁时，向主 Agent 报告
+当前成果、阻塞条件和下一条建议指令后保持现场，不用主 Agent 在线等待。用户之后推进流程时，
+主 Agent 只把下一阶段任务发送给同一 worktree Agent；worker 必须重新读取实时状态再继续。
+
 ## 先按 Bug 管理类型分流
 
 `work_item_attribute.template` 是 **Bug 管理类型**，必须从工作项回包读取其 `id` 和
@@ -46,12 +58,13 @@ ID 与名称必须同时记录。若两者与实时配置冲突，以实时 `tem
 3. **待回归**：仅在已回读确认 QA 验收通过且当前状态为“已验证待合入”后，取得合并授权并
    合并 MR；验证目标分支，执行合并后的开发侧动作，再清理 worktree。
 
-其它模板先读取其实时状态流并向用户确认阶段。每一步以回读结果为完成标准；外部命令成功但
-未回读，不算完成。
+其它模板由 worktree Agent 读取其实时状态流；需要用户选择时报告阻塞并停止该阶段。每一步以
+worker 的回读结果为完成标准。主 Agent 只接收 worker 主动回报，不等待或重复验收。
 
-## 1. 解析 Bug
+## 1. 派单要求：由 worktree Agent 解析 Bug
 
-加载 `meegle` skill，执行 URL decode 和 Auth Guard：
+主 Agent 向 worktree Agent 传入原始 Bug URL；worker 加载 `meegle` skill，执行 URL decode、
+Auth Guard 和工作项查询：
 
 ```bash
 meegle url decode --url "$BUG_URL" --format json
@@ -61,24 +74,24 @@ meegle workitem get --project-key "$PROJECT_KEY" --work-item-id "$BUG_ID" \
   --fields _all --params '{"page_size":100}' --format json
 ```
 
-保存 Bug 标题、描述、优先级、当前状态、工作项类型、报告人，以及
+worktree Agent 保存 Bug 标题、描述、优先级、当前状态、工作项类型、报告人，以及
 `work_item_attribute.template.id/name`。后者就是 **Bug 管理类型**；按上面的模板表选择流程，
 不要从标题、目标分支或工作项类型猜测。默认以**报告人作为测试人员**；用户显式指定测试人员
 时使用指定人员。只有流程到达 @ 测试的阶段时，才通过 `meegle user search` 将 user_key 转换成
 `lark_user_id`，供评论中的真实 @ mention 使用。
 
-## 2. 确认改动与目标分支
+## 2. 主 Agent 只确认隔离边界
 
-检查工作区、现有 worktree、分支和 MR。若多个改动混在一起，先明确哪些文件属于 Bug。
-保护其它改动，不使用整仓 restore、stash 或 `git add .`。
-
-目标分支按以下顺序确定：
+主 Agent 检查当前工作区、现有 worktree 和分支，只为安全迁移与派单确定目标位置。若多个改动
+混在一起，先明确哪些文件属于 Bug。保护其它改动，不使用整仓 restore、stash 或 `git add .`。
+GitLab MR 查询、目标分支最终校验和后续业务判断交给 worktree Agent；主 Agent 仅在创建
+worktree 前按以下顺序提供候选目标分支：
 
 1. 已有 MR：使用 MR 的 target branch。
 2. 用户明确指定：复述并确认；具体 release 分支需要二次确认。
 3. 未指定：fetch 后根据当前分支和 fork-point 推断，展示依据并取得确认。
 
-目标分支不存在时停止，不回退到其它分支。源分支按 Bug 内容生成
+目标分支不存在时停止派单，不回退到其它分支。源分支按 Bug 内容生成
 `fix/<topic>-<bug-id>`，先检查本地、远端和 worktree，存在时复用。
 
 ## 3. 安全迁移已有修复
@@ -102,53 +115,69 @@ wt switch --create "$SOURCE_BRANCH" --base "origin/$TARGET_BRANCH" \
 
 若尚未修复，跳过 patch 迁移；仍先创建 Worktrunk worktree，再进入 Luvus。
 
-## 4. Luvus 强制接管
+## 4. Luvus 异步接管
 
-Worktrunk 创建完成后，后续代码修改、排查、测试、提交、push 和 MR 创建必须由该 worktree
-中的 Luvus Pi agent 执行。主会话负责监督、回读 GitLab/Git 结果和操作 Meegle，不继续直接
-修改业务代码。
+Worktrunk 创建完成后，全部交付操作必须由该 worktree 中的 Luvus Pi agent 执行，包括 Bug
+解析、代码修改、排查、测试、提交、push、MR、pipeline 门禁、合并、Meegle 评论/流转/回读和
+清理。主 Agent 不继续直接执行这些操作。
 
 加载 `luvus` skill。位于 Luvus 中时必须使用继承的 `LUVUS_BIN_PATH`、
 `LUVUS_SOCKET_PATH` 和 `LUVUS_PANE_ID`，不换用其它 session 或 PATH 中的客户端。
 
 1. 用 `luvus workspace list` 按**完整 worktree 路径**定位 workspace。
 2. Worktrunk hook 未自动打开时，执行 `luvus worktree open "$WORKTREE_PATH"`，再回读列表。
-3. 聚焦该 workspace，读取 pane；在其空闲 shell pane 启动命名 Pi：
+3. 在该 workspace 的空闲 shell pane 启动或复用命名 Pi。不要为了派单改变用户焦点：
 
 ```bash
-"$LUVUS_BIN_PATH" workspace focus "$WORKSPACE_INDEX"
 "$LUVUS_BIN_PATH" pane list
 "$LUVUS_BIN_PATH" agent start "$AGENT_NAME" --kind pi --pane "$PANE_ID" --timeout 30
 ```
 
-4. 通过 `agent send` 传递完整任务，不发送原始终端按键。任务必须包含：
-   - Bug URL、标题、描述、证据与验收标准；
-   - worktree、源分支、动态确认的目标分支；
+4. 主 Agent 先给自己命名，再用**不带 `--wait`** 的 `agent send` 传递完整阶段任务，不发送原始
+   终端按键：
+
+```bash
+"$LUVUS_BIN_PATH" agent name bugfix-lead
+"$LUVUS_BIN_PATH" agent send "$AGENT_NAME" "$TASK"
+```
+
+   任务必须包含：
+   - Bug URL、当前用户请求的阶段和已授权外部动作；
+   - worktree、源分支、候选目标分支；
    - 已有改动和必须保留的文件；
    - 项目规则、相关测试与禁止的副作用；
+   - 要求 worker 自行读取 Bug 标题、描述、管理类型、报告人、状态和实时 transition；
+   - 要求 worker 自行执行 GitLab 与 Meegle 操作并逐项回读；
+   - 要求 worker 在完成或阻塞时执行
+     `luvus agent send bugfix-lead 'done|blocked: <成果、证据、下一步>'` 主动回报；
    - MR 必须链接 Bug；默认 Bug 管理类型合入 `develop` 前不得评论、@ 测试或流转 Bug；
-     CB3 流程不得在 QA 验收并流转“已验证待合入”前合并，且不得要求 Pi 代替 QA 写验收
-     结论或执行该流转；其它合并和改单操作必须有当前阶段授权。
-5. Agent 完成后读取其结果，并独立回读 worktree diff、commit、push、MR 和 pipeline。
+     CB3 流程不得在 QA 验收并流转“已验证待合入”前合并，且不得代替 QA 写验收结论或执行
+     该流转；其它合并和改单操作必须有当前阶段授权。
+5. `agent send` 成功后，只向用户报告任务被送到哪个 agent/pane，然后结束当前轮次。不要读取
+   agent 输出、等待状态、轮询外部系统或在主会话重复执行 worker 的验收。
 
-Luvus 或 Pi 无法启动时停止并说明，不静默回退到主会话直接修改；只有用户明确同意才换路径。
+worker 对当前阶段负责到底。可为当前步骤使用工具自带的有界等待；若 pipeline、QA 或授权尚未
+满足，则报告 `blocked` 并保持 worktree/agent，不做无限轮询。后续请求通过同一 agent 的新一条
+无等待 `agent send` 继续，worker 重新回读所有门禁。
+
+Luvus 或 Pi 无法启动时停止并说明，不静默回退到主会话直接操作；只有用户明确同意才换路径。
 
 ## 5. MR 门禁
 
-Pi 必须按目标仓库 MR 规范提交并创建或更新 MR。MR 描述必须包含原始 Bug 链接：
+worktree Agent 必须按目标仓库 MR 规范提交并创建或更新 MR。MR 描述必须包含原始 Bug 链接：
 
 ```markdown
 ## 关联 Bug
 - [Bug <id>：<标题>](<BUG_URL>)
 ```
 
-还需写清根因、改动和实际验证。主会话回读并确认 source/target、Bug URL、pipeline、
-提交已推送且 worktree 干净；缺一项就让 Luvus agent 修正。
+还需写清根因、改动和实际验证。worker 自行回读并确认 source/target、Bug URL、pipeline、
+提交已推送且 worktree 干净；缺一项就自行修正或报告阻塞。主 Agent 不重复回读。
 
 ## 6. 按模板评论和流转
 
-状态流转前先 `workflow list-state-transitions`，只使用实时返回的 transition ID。评论创建或更新后
-先回读，再流转并回读最终状态。两种模板的时点和文案不得混用。
+worktree Agent 在状态流转前先 `workflow list-state-transitions`，只使用实时返回的 transition ID。
+评论创建或更新后先回读，再流转并回读最终状态。两种模板的时点和文案不得混用。
 
 ### 默认 Bug 管理类型合入 develop 后
 
@@ -208,17 +237,19 @@ mention 格式使用 `meegle user search` 返回的 `lark_user_id`：
 
 ## 7. 合并与清理
 
-只有用户明确授权且 pipeline、MR 可合并状态和对应模板门禁均满足时才合并：
+只有任务已明确包含合并授权，且 pipeline、MR 可合并状态和对应模板门禁均满足时，worktree
+Agent 才能合并：
 
 - 默认 Bug 管理类型 → `develop`：合并是 @ 测试和状态流转的前置条件。
 - CB3 客户端 Bug 流程：回读确认 QA 已留下通过结论，且当前状态已经由 QA 流转为
   “已验证待合入”，才满足合并前置条件。开发侧不得自行制造这两项门禁证据。
 
-合并后 fetch 目标分支，验证 source commit 已进入 `origin/$TARGET_BRANCH`，并取得真实 merge
-commit。随后执行该模板规定的评论和状态动作；默认 Bug 管理类型不得在这项验证前提前通知测试。
+worktree Agent 合并后 fetch 目标分支，验证 source commit 已进入 `origin/$TARGET_BRANCH`，并
+取得真实 merge commit。随后执行该模板规定的评论和状态动作；默认 Bug 管理类型不得在这项
+验证前提前通知测试。
 
-清理前确认模板规定的评论与状态均已回读成功，且 worktree 无未提交改动、无未推送提交。用户
-授权移除时使用 Worktrunk：
+清理前由 worktree Agent 确认模板规定的评论与状态均已回读成功，且 worktree 无未提交改动、
+无未推送提交。任务已授权移除时使用 Worktrunk：
 
 ```bash
 wt remove "$SOURCE_BRANCH"
@@ -228,4 +259,5 @@ wt remove "$SOURCE_BRANCH"
 而保留。先验证 MR 已合并、目标分支包含提交、远端源分支已删除；需要 `-D` 删除本地分支时
 单独取得明确授权。
 
-最终报告 MR、commit、目标分支、pipeline、Bug 状态、评论 @ 对象、worktree/分支结果和残留项。
+worker 的最终回报必须包含 MR、commit、目标分支、pipeline、Bug 状态、评论 @ 对象、
+worktree/分支结果和残留项。主 Agent 只转述这份主动回报并按用户下一条指令继续派单。
