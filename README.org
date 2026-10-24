@@ -9,5 +9,5 @@ Misaka's agent skills
   independently review and verify its changes.
 - =adb-device-unlock=: Unlock an authorized Android device with adb before UI
   automation.
-- =apk-device-install=: Install and verify an APK through an Android OEM
-  installer before device QA.
+- =apk-device-install=: Install and verify an APK. Classify a USB confirm
+  as countdown or staying; do not keep a per-OEM tap table.
