@@ -15,26 +15,29 @@ project cwd. Read the addon's module docstring before writing a route. The
 docstring is the route contract.
 
 A profile is one directory: `routes.json`, `data/`, and optional
-`handlers.py`. That layout stays. Pass the profile as `MOCK_DIR`.
+`handlers.py`. That layout stays. The profile name is `$HOST_ENV`. Pass
+`--set mock_profile=<name>` only when the user wants a different profile.
 
-The default place is `$HOME/.mitmproxy/mock/<name>/`. `<name>` is one
-directory name and is required. Use another absolute path only when the user
+The profile root is `$MITMPROXY_MOCK_DIR` when that variable is set,
+otherwise `$HOME/.mitmproxy/mock`. The profile path is `<root>/$HOST_ENV/`
+unless overridden. Pass an absolute path as `mock_profile` only when the user
 gives one, such as fixtures in a repo. Do not put `routes.json` directly in
-`mock/`. Do not use `~/.config/mitmproxy`: mitmproxy's own home is
-`~/.mitmproxy`. Keep fixtures out of the skill directory. Keys, the client
-config, and logs stay in the run directory.
+the root. Do not use `~/.config/mitmproxy`:
+mitmproxy's own home is `~/.mitmproxy`. Keep fixtures out of the skill
+directory. Keys, the client config, and logs stay in the run directory.
 
 Intercept only environments the user authorized. Bind every new route to a
 test host they named.
 
-## Prepare MOCK_DIR
+## Prepare the profile
 
-Reuse `<name>` when the user names an existing profile. Otherwise create
-`$HOME/.mitmproxy/mock/<name>/` and choose `<name>` from the API under
-test. An empty `routes.json` (`[]`) only observes live traffic.
+Use `$HOST_ENV` unless the user names another profile. Create
+`<root>/$HOST_ENV/` only when that directory is missing. An empty
+`routes.json` (`[]`) only observes live traffic. If `HOST_ENV` is empty and
+the user names no profile, stop and ask.
 
-This step is done when `MOCK_DIR` is that profile path and every route field
-is one the addon docstring lists.
+This step is done when the profile path is that directory and every route
+field is one the addon docstring lists.
 
 Unmatched requests stay pass-through. A handler that returns without
 `interceptor.respond` also stays pass-through. Restart mitmdump after
@@ -50,7 +53,7 @@ and let one real response through. Read it back offline:
 mitmdump -n -r "$RUN/flows" "~u <host/path> & ~s" --flow-detail 3
 ```
 
-`-n` only prints the dump. Save the body under `MOCK_DIR/data/`, add the
+`-n` only prints the dump. Save the body under the profile `data/` directory, add the
 route, then restart so the route loads. Raise `--flow-detail` if the body is
 still hidden. Keep tokens and cookies out of fixtures and out of the summary.
 
@@ -61,7 +64,7 @@ port. Its keys stay in `~/.mitmproxy/wireguard.conf`, so an existing client
 config keeps working across runs.
 
 If UDP 51820 is already taken, read that process's command line. Reuse it
-when it is this addon, `MOCK_DIR` is the one you prepared, and you can read
+when it is this addon, `mock_profile` is the profile you prepared, and you can read
 its log. Otherwise stop and ask before taking the port. A second server needs
 its own key file and port: `--mode wireguard:<keyfile>@<port>`.
 
@@ -71,13 +74,14 @@ record its pid:
 ```bash
 RUN="$HOME/.mitmproxy/runs/<name>"
 mkdir -p "$RUN"
-MOCK_DIR="$HOME/.mitmproxy/mock/<name>" mitmdump --mode wireguard \
+mitmdump --mode wireguard \
   -s "$SKILL/scripts/map-local.py" \
   >"$RUN/startup.log" 2>&1
 ```
 
-This step is done when the log contains `MOCK_DIR=<path>` for the directory
-you prepared and `WireGuard server listening`, plus the client config block.
+Add `--set mock_profile=<name>` only for a profile other than `$HOST_ENV`.
+This step is done when the log contains `profile=<path>` for that directory
+and `WireGuard server listening`, plus the client config block.
 Give that block to the user to import into the WireGuard app. Keep the
 printed `Endpoint` and `DNS`. A QR, if they want one, goes in `$RUN` via
 `qrencode`. The config, its keys, and any QR stay out of git.

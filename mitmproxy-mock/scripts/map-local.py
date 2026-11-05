@@ -1,10 +1,14 @@
-"""Serve fixtures from MOCK_DIR. Load with: mitmdump -s map-local.py
+"""Serve one profile under MITMPROXY_MOCK_DIR.
 
-MOCK_DIR is required. Pass the profile path. The usual path is
-~/.mitmproxy/mock/<name>/, and <name> is required. Another absolute path
-is fine when the caller supplies it. There is no default profile.
+Load with:
+  mitmdump -s map-local.py --set mock_profile=<name>
 
-Layout of MOCK_DIR:
+MITMPROXY_MOCK_DIR is the profile root. When unset, the root is
+~/.mitmproxy/mock. mock_profile selects one directory name under that root,
+or an absolute profile path. When mock_profile is empty, the name is
+HOST_ENV. If both are empty, startup fails.
+
+Layout of the profile directory:
   routes.json     Route list. Required, may be [].
   data/           Fixture files named by routes.
   handlers.py     Optional. Functions named handle_<name>.
@@ -59,13 +63,32 @@ class Route:
         self.compiled_pattern = re.compile(self.pattern)
 
 
-def _mock_dir() -> Path:
-    raw = os.environ.get("MOCK_DIR", "").strip()
-    if not raw:
-        raise RuntimeError("MOCK_DIR is required and has no default")
-    path = Path(raw).expanduser().resolve()
+def _profile_dir() -> Path:
+    selected = str(ctx.options.mock_profile).strip()
+    if not selected:
+        selected = os.environ.get("HOST_ENV", "").strip()
+    if not selected:
+        raise RuntimeError(
+            "mock_profile is unset and HOST_ENV is empty: pass a directory "
+            "name under MITMPROXY_MOCK_DIR, or an absolute profile path"
+        )
+    selected_path = Path(selected).expanduser()
+    if selected_path.is_absolute():
+        path = selected_path.resolve()
+    else:
+        if Path(selected).name != selected or selected in {".", ".."}:
+            raise RuntimeError(
+                "mock_profile must be a single directory name or an absolute path"
+            )
+        root = os.environ.get("MITMPROXY_MOCK_DIR", "").strip()
+        base = (
+            Path(root).expanduser()
+            if root
+            else Path.home() / ".mitmproxy" / "mock"
+        )
+        path = (base / selected).resolve()
     if not path.is_dir():
-        raise RuntimeError(f"MOCK_DIR is not a directory: {path}")
+        raise RuntimeError(f"profile directory does not exist: {path}")
     return path
 
 
@@ -127,7 +150,7 @@ class Interceptor:
         self.handlers = _load_handlers(mock_dir)
         self.routes = _load_routes(mock_dir)
         ctx.log.info(
-            f"MOCK_DIR={mock_dir} routes={len(self.routes)} "
+            f"profile={mock_dir} routes={len(self.routes)} "
             f"handlers={list(self.handlers) or '(none)'}"
         )
 
@@ -183,8 +206,28 @@ class Interceptor:
             return
 
 
-interceptor = Interceptor(_mock_dir())
+class ProfileMock:
+    def __init__(self):
+        self.interceptor: Interceptor | None = None
+
+    def load(self, loader):
+        loader.add_option(
+            "mock_profile",
+            str,
+            "",
+            "Profile name under MITMPROXY_MOCK_DIR, or an absolute path. "
+            "Empty uses HOST_ENV.",
+        )
+
+    def configure(self, updated):
+        if self.interceptor is not None and "mock_profile" not in updated:
+            return
+        self.interceptor = Interceptor(_profile_dir())
+
+    def request(self, flow: http.HTTPFlow) -> None:
+        if self.interceptor is None:
+            raise RuntimeError("mock profile is not loaded")
+        self.interceptor.process(flow)
 
 
-def request(flow: http.HTTPFlow) -> None:
-    interceptor.process(flow)
+addons = [ProfileMock()]
