@@ -2,6 +2,9 @@
 Misaka's agent skills
 
 ** Available skills
+- =pr-worktree-handoff=: Coordinator-only handoff for features, fixes, and other
+  independent work: Worktrunk worktree first, then its matching Luvus workspace
+  agent. Explicit delegation only; assigned workers execute, never recurse.
 - =bugfix-delivery=: Deliver Feishu Project bug fixes through Worktrunk,
   Luvus-managed Pi execution, GitLab MR gates, status comments, and cleanup.
 - =feishu-projects=: Query and manage Feishu Project work items through MCP.
