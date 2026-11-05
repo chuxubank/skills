@@ -7,7 +7,6 @@ Misaka's agent skills
   agent. Explicit delegation only; assigned workers execute, never recurse.
 - =bugfix-delivery=: Deliver Feishu Project bug fixes through Worktrunk,
   Luvus-managed Pi execution, GitLab MR gates, status comments, and cleanup.
-- =feishu-projects=: Query and manage Feishu Project work items through MCP.
 - =grok-subagent=: Delegate focused implementation to Grok Build CLI and
   independently review and verify its changes.
 - =adb-device-unlock=: Unlock an authorized Android device with adb before UI
@@ -16,3 +15,8 @@ Misaka's agent skills
   as countdown or staying; do not keep a per-OEM tap table.
 - =mitmproxy-mock=: Simulate HTTP APIs with the bundled mitmproxy WireGuard
   addon and check the client behavior that follows.
+
+** Deprecated skills
+- =feishu-projects=: Deprecated MCP integration; use the official
+  [[https://github.com/larksuite/meegle-cli][Meegle CLI]] and its =meegle= skill instead.
+  See [[file:feishu-projects/SKILL.md][migration notes]].
