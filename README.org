@@ -11,3 +11,5 @@ Misaka's agent skills
   automation.
 - =apk-device-install=: Install and verify an APK. Classify a USB confirm
   as countdown or staying; do not keep a per-OEM tap table.
+- =mitmproxy-mock=: Simulate HTTP APIs with the bundled mitmproxy WireGuard
+  addon and check the client behavior that follows.
