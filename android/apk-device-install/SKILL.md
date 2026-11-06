@@ -103,9 +103,12 @@ screen, resolution, or phone are not a substitute.
 
 Use the available device automation tool on the same device. Prefer its
 structured UI elements and element-based actions, using current refs or
-id/label/role selectors as supported. Continue from the action's returned UI
-state or diff when available; request a fresh element tree only when needed
-to identify the next target.
+id/label/role selectors as supported. Batch actions when one snapshot identifies
+all targets and earlier actions leave later targets valid, for example selecting
+a required risk acknowledgement and then tapping continue. Split at a page or
+dialog transition, an unknown next target, or a tool constraint that requires
+fresh refs. Continue from the batch's returned UI state or diff; request a fresh
+snapshot only when that result is insufficient to identify the next target.
 
 If the tool cannot expose the installer, use the dump already taken. Capture a
 screenshot only when that structured UI is unavailable, sparse, or insufficient
