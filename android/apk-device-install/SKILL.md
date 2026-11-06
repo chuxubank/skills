@@ -1,10 +1,10 @@
 ---
 name: apk-device-install
 description: >-
-  Install and verify an Android APK on one authorized device. Use when adb
-  install is rejected, an APK transfer times out, package signatures do not
-  match, a USB install confirm counts down and auto-rejects, or a device-side
-  installer prompt must be completed before QA.
+  Install, launch, and verify an Android APK on one authorized device. Use when
+  the user asks to install or run an Android app on a device, including requests
+  implied by context. Handles install rejection, transfer timeout, signature
+  mismatch, and device-side install confirmation.
 ---
 
 # Android APK Device Install
