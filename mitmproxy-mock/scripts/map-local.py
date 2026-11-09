@@ -9,12 +9,16 @@ or an absolute profile path. When mock_profile is empty, the name is
 HOST_ENV. If both are empty, startup fails.
 
 Layout of the profile directory:
+  hosts.json      Optional host allowlist. Missing or [] ignores the host.
+                  A string is one exact hostname. {"pattern": "..."} is a
+                  regular expression matched against the whole hostname.
   routes.json     Route list. Required, may be [].
   data/           Fixture files named by routes.
   handlers.py     Optional. Functions named handle_<name>.
 
 routes.json entries:
-  pattern         Regex searched against flow.request.pretty_url. Required.
+  pattern         Regex searched against the path and query. Required.
+                  Do not include a scheme or host.
   handler         Default "standard".
   file            Path relative to data/. The standard handler requires it.
   status_code     Default 200. Used by the standard handler.
@@ -92,6 +96,56 @@ def _profile_dir() -> Path:
     return path
 
 
+@dataclass
+class HostFilter:
+    exact: set[str] = field(default_factory=set)
+    patterns: list[re.Pattern] = field(default_factory=list)
+
+    def __bool__(self) -> bool:
+        return bool(self.exact or self.patterns)
+
+    def allows(self, host: str) -> bool:
+        if not self:
+            return True
+        host = host.lower()
+        return host in self.exact or any(
+            pattern.fullmatch(host) for pattern in self.patterns
+        )
+
+
+def _load_hosts(mock_dir: Path) -> HostFilter:
+    hosts_file = mock_dir / "hosts.json"
+    if not hosts_file.exists():
+        return HostFilter()
+    try:
+        entries = json.loads(hosts_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise RuntimeError(f"hosts.json is invalid JSON: {hosts_file}") from error
+    if not isinstance(entries, list):
+        raise RuntimeError("hosts.json must be a list")
+    hosts = HostFilter()
+    for index, entry in enumerate(entries):
+        if isinstance(entry, str):
+            if entry.strip():
+                hosts.exact.add(entry.strip().lower())
+            continue
+        pattern = entry.get("pattern") if isinstance(entry, dict) else None
+        if not isinstance(pattern, str) or not pattern.strip():
+            raise RuntimeError(
+                f"hosts.json[{index}] must be a hostname or "
+                '{"pattern": "<regex>"}'
+            )
+        try:
+            hosts.patterns.append(
+                re.compile(pattern.strip(), re.IGNORECASE)
+            )
+        except re.error as error:
+            raise RuntimeError(
+                f"hosts.json[{index}] has an invalid pattern: {error}"
+            ) from error
+    return hosts
+
+
 def _load_routes(mock_dir: Path) -> list[Route]:
     routes_file = mock_dir / "routes.json"
     try:
@@ -148,9 +202,11 @@ class Interceptor:
     def __init__(self, mock_dir: Path):
         self.mock_dir = mock_dir
         self.handlers = _load_handlers(mock_dir)
+        self.hosts = _load_hosts(mock_dir)
         self.routes = _load_routes(mock_dir)
         ctx.log.info(
-            f"profile={mock_dir} routes={len(self.routes)} "
+            f"profile={mock_dir} hosts={len(self.hosts.exact) + len(self.hosts.patterns) or 'any'} "
+            f"routes={len(self.routes)} "
             f"handlers={list(self.handlers) or '(none)'}"
         )
 
@@ -191,8 +247,10 @@ class Interceptor:
 
     def process(self, flow: http.HTTPFlow):
         ctx.log.info(f"--> {flow.request.method} {flow.request.pretty_url}")
+        if not self.hosts.allows(flow.request.pretty_host):
+            return
         for rule in self.routes:
-            if not rule.compiled_pattern.search(flow.request.pretty_url):
+            if not rule.compiled_pattern.search(flow.request.path):
                 continue
             try:
                 self._dispatch(flow, rule)

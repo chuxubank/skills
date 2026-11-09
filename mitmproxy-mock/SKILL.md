@@ -14,8 +14,9 @@ that contains this file. Resolve that path from the skill, not from the
 project cwd. Read the addon's module docstring before writing a route. The
 docstring is the route contract.
 
-A profile is one directory: `routes.json`, `data/`, and optional
-`handlers.py`. That layout stays. The profile name is `$HOST_ENV`. Pass
+A profile is one directory: `routes.json`, `data/`, optional
+`hosts.json`, and optional `handlers.py`. That layout stays. The profile
+name is `$HOST_ENV`. Pass
 `--set mock_profile=<name>` only when the user wants a different profile.
 
 The profile root is `$MITMPROXY_MOCK_DIR` when that variable is set,
@@ -26,8 +27,11 @@ the root. Do not use `~/.config/mitmproxy`:
 mitmproxy's own home is `~/.mitmproxy`. Keep fixtures out of the skill
 directory. Keys, the client config, and logs stay in the run directory.
 
-Intercept only environments the user authorized. Bind every new route to a
-test host they named.
+Intercept only environments the user authorized. Put the test hosts in
+the profile `hosts.json`, once. A string is an exact hostname. An object
+`{"pattern": "<regex>"}` matches the whole hostname. A missing or empty
+file ignores the host. Route patterns match the path and query, not the
+scheme or host.
 
 ## Prepare the profile
 
