@@ -47,6 +47,10 @@ handler that returns without `interceptor.respond` leaves that request
 pass-through and does not try a later route. A handler exception is HTTP 500.
 Restart mitmdump after `hosts.json`, `routes.json`, or `handlers.py` changes.
 A standard JSON file is read on each request. Its `file` stays inside `data/`.
+Change that file to change the next response. Do not encode scenarios in
+`handlers.py`. Write a handler only when one request must change the next
+response before the file can be edited, such as a POST followed immediately
+by its GET.
 
 ## Capture an unknown body
 
