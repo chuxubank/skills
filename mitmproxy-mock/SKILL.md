@@ -15,23 +15,22 @@ project cwd. Read the addon's module docstring before writing a route. The
 docstring is the route contract.
 
 A profile is one directory: `routes.json`, `data/`, optional
-`hosts.json`, and optional `handlers.py`. That layout stays. The profile
-name is `$HOST_ENV`. Pass
+`hosts.json`, and optional `handlers.py`. That layout stays. `handlers.py`
+is the only Python file the addon loads. Put every `handle_<name>` function
+there. Do not add a second script. The profile name is `$HOST_ENV`. Pass
 `--set mock_profile=<name>` only when the user wants a different profile.
 
 The profile root is `$MITMPROXY_MOCK_DIR` when that variable is set,
 otherwise `$HOME/.mitmproxy/mock`. The profile path is `<root>/$HOST_ENV/`
 unless overridden. Pass an absolute path as `mock_profile` only when the user
 gives one, such as fixtures in a repo. Do not put `routes.json` directly in
-the root. Do not use `~/.config/mitmproxy`:
-mitmproxy's own home is `~/.mitmproxy`. Keep fixtures out of the skill
-directory. Keys, the client config, and logs stay in the run directory.
+the root. Keep fixtures out of the skill directory. Keys, the client
+config, and logs stay in the run directory.
 
-Intercept only environments the user authorized. Put the test hosts in
-the profile `hosts.json`, once. A string is an exact hostname. An object
-`{"pattern": "<regex>"}` matches the whole hostname. A missing or empty
-file ignores the host. Route patterns match the path and query, not the
-scheme or host.
+Intercept only environments the user authorized. `hosts.json` is a list of
+regular expressions, each matched against the whole hostname. A missing or
+empty file ignores the host. Route patterns match the path and query, not
+the scheme or host.
 
 ## Prepare the profile
 
@@ -43,10 +42,11 @@ the user names no profile, stop and ask.
 This step is done when the profile path is that directory and every route
 field is one the addon docstring lists.
 
-Unmatched requests stay pass-through. A handler that returns without
-`interceptor.respond` also stays pass-through. Restart mitmdump after
-`routes.json` or `handlers.py` changes. A standard JSON file is read on each
-request.
+The first matching route owns the request. No match stays pass-through. A
+handler that returns without `interceptor.respond` leaves that request
+pass-through and does not try a later route. A handler exception is HTTP 500.
+Restart mitmdump after `hosts.json`, `routes.json`, or `handlers.py` changes.
+A standard JSON file is read on each request. Its `file` stays inside `data/`.
 
 ## Capture an unknown body
 

@@ -9,33 +9,38 @@ or an absolute profile path. When mock_profile is empty, the name is
 HOST_ENV. If both are empty, startup fails.
 
 Layout of the profile directory:
-  hosts.json      Optional host allowlist. Missing or [] ignores the host.
-                  A string is one exact hostname. {"pattern": "..."} is a
-                  regular expression matched against the whole hostname.
+  hosts.json      Optional list of regular expressions. Each is full-matched
+                  against the hostname, ignoring case. Missing or [] ignores
+                  the host. A dot in a hostname must be escaped.
   routes.json     Route list. Required, may be [].
   data/           Fixture files named by routes.
-  handlers.py     Optional. Functions named handle_<name>.
+  handlers.py     Optional, and the only Python file loaded. Functions
+                  named handle_<name>. Another .py file in the profile is ignored.
 
 routes.json entries:
   pattern         Regex searched against the path and query. Required.
                   Do not include a scheme or host.
   handler         Default "standard".
-  file            Path relative to data/. The standard handler requires it.
+  file            Path relative to data/. No absolute path or "..".
+                  The standard handler requires it and requires JSON.
   status_code     Default 200. Used by the standard handler.
   delay_seconds   Default 0. The standard handler sleeps this long and blocks
                   the proxy while it sleeps.
 
-The first matching route wins. No match stays pass-through. A custom handler
-that returns without interceptor.respond also stays pass-through.
+The first matching route owns the request. No match stays pass-through.
+A custom handler that returns without interceptor.respond leaves that request
+pass-through and does not try later routes. A handler exception becomes
+HTTP 500.
 
-A custom handler is handle_<name>(interceptor, flow, rule):
+A custom handler is handle_<name>(interceptor, flow, rule) in handlers.py:
   rule.pattern, rule.file_path, rule.status_code, rule.delay_seconds,
   rule.handler_name
   interceptor.respond(flow, status_code, content, headers=None)
   content is str or bytes. The default Content-Type is application/json.
 
-Routes and handlers load once. Restart mitmdump after changing routes.json
-or handlers.py. The standard handler reads its file on every request.
+Routes, hosts, and handlers load once. Restart mitmdump after changing
+hosts.json, routes.json, or handlers.py. The standard handler reads its
+file on every request.
 
 An empty routes.json only observes: requests stay pass-through.
 """
@@ -96,54 +101,37 @@ def _profile_dir() -> Path:
     return path
 
 
-@dataclass
-class HostFilter:
-    exact: set[str] = field(default_factory=set)
-    patterns: list[re.Pattern] = field(default_factory=list)
-
-    def __bool__(self) -> bool:
-        return bool(self.exact or self.patterns)
-
-    def allows(self, host: str) -> bool:
-        if not self:
-            return True
-        host = host.lower()
-        return host in self.exact or any(
-            pattern.fullmatch(host) for pattern in self.patterns
-        )
-
-
-def _load_hosts(mock_dir: Path) -> HostFilter:
+def _load_hosts(mock_dir: Path) -> list[re.Pattern]:
     hosts_file = mock_dir / "hosts.json"
     if not hosts_file.exists():
-        return HostFilter()
+        return []
     try:
         entries = json.loads(hosts_file.read_text(encoding="utf-8"))
     except json.JSONDecodeError as error:
         raise RuntimeError(f"hosts.json is invalid JSON: {hosts_file}") from error
     if not isinstance(entries, list):
-        raise RuntimeError("hosts.json must be a list")
-    hosts = HostFilter()
+        raise RuntimeError("hosts.json must be a list of regular expressions")
+    patterns: list[re.Pattern] = []
     for index, entry in enumerate(entries):
-        if isinstance(entry, str):
-            if entry.strip():
-                hosts.exact.add(entry.strip().lower())
-            continue
-        pattern = entry.get("pattern") if isinstance(entry, dict) else None
-        if not isinstance(pattern, str) or not pattern.strip():
-            raise RuntimeError(
-                f"hosts.json[{index}] must be a hostname or "
-                '{"pattern": "<regex>"}'
-            )
+        if not isinstance(entry, str) or not entry.strip():
+            raise RuntimeError(f"hosts.json[{index}] must be a regular expression")
         try:
-            hosts.patterns.append(
-                re.compile(pattern.strip(), re.IGNORECASE)
-            )
+            patterns.append(re.compile(entry.strip(), re.IGNORECASE))
         except re.error as error:
             raise RuntimeError(
                 f"hosts.json[{index}] has an invalid pattern: {error}"
             ) from error
-    return hosts
+    return patterns
+
+
+def _fixture_path(mock_dir: Path, file_name: object) -> Path:
+    if not isinstance(file_name, str) or not file_name.strip():
+        raise RuntimeError("file must be a relative path under data/")
+    data_dir = (mock_dir / "data").resolve()
+    path = (data_dir / file_name).resolve()
+    if path != data_dir and data_dir not in path.parents:
+        raise RuntimeError(f"file escapes data/: {file_name}")
+    return path
 
 
 def _load_routes(mock_dir: Path) -> list[Route]:
@@ -162,7 +150,7 @@ def _load_routes(mock_dir: Path) -> list[Route]:
         if not isinstance(entry, dict) or "pattern" not in entry:
             raise RuntimeError(f"routes.json[{index}] needs a pattern")
         file_name = entry.get("file")
-        file_path = (mock_dir / "data" / file_name) if file_name else None
+        file_path = _fixture_path(mock_dir, file_name) if file_name is not None else None
         try:
             routes.append(
                 Route(
@@ -205,7 +193,7 @@ class Interceptor:
         self.hosts = _load_hosts(mock_dir)
         self.routes = _load_routes(mock_dir)
         ctx.log.info(
-            f"profile={mock_dir} hosts={len(self.hosts.exact) + len(self.hosts.patterns) or 'any'} "
+            f"profile={mock_dir} hosts={len(self.hosts) or 'any'} "
             f"routes={len(self.routes)} "
             f"handlers={list(self.handlers) or '(none)'}"
         )
@@ -247,7 +235,8 @@ class Interceptor:
 
     def process(self, flow: http.HTTPFlow):
         ctx.log.info(f"--> {flow.request.method} {flow.request.pretty_url}")
-        if not self.hosts.allows(flow.request.pretty_host):
+        host = flow.request.pretty_host
+        if self.hosts and not any(pattern.fullmatch(host) for pattern in self.hosts):
             return
         for rule in self.routes:
             if not rule.compiled_pattern.search(flow.request.path):
