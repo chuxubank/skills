@@ -2,13 +2,13 @@
 
 ## 触发语
 
-- “你做协调者，按 pr-worktree-handoff 把这两个 feature 分开，用 wt 建 worktree，交给各 Luvus workspace 的 Pi。”
-- “给这个 PR 建/复用 worktree，让对应 Luvus workspace 的 Pi 处理 review，只改代码测试，不提交。”
-- “公共 CI 单独一个 worktree，在对应 workspace 启动 Pi；不要混进 feature PR。”
-- “这个 GitLab MR 用项目现有 glab 查反馈，先 wt 建 worktree，再交对应 Luvus workspace 的 agent 修。”
-- “还没有 PR/MR；先用 Worktrunk 建独立 worktree，再向对应 Luvus workspace 的 Pi 派单。”
+- “你做协调者，按 worktree-handoff 把这两个 feature 分开，用 wt 建 worktree，交给各 Luvus workspace 的 Pi。”
+- “给这个评审建/复用 worktree，让对应 Luvus workspace 的 Pi 处理反馈，只改代码测试，不提交。”
+- “公共 CI 单独一个 worktree，在对应 workspace 启动 Pi；不要混进 feature 分支。”
+- “这个平台评审用项目现有工具查反馈，先 wt 建 worktree，再交对应 Luvus workspace 的 agent 修。”
+- “还没有评审；先用 Worktrunk 建独立 worktree，再向对应 Luvus workspace 的 Pi 派单。”
 
-仅说“实现这个 feature”“修这个 bug”“看下 PR”“用 wt 切分支”不触发本流程；单独请求使用 Luvus 控制命令
+仅说“实现这个 feature”“修这个 bug”“看下评审”“用 wt 切分支”不触发本流程；单独请求使用 Luvus 控制命令
 按 `luvus` skill 处理。仅询问拆分方案时先做只读规划，不视为批准创建/委派/发布。
 
 ## 历史实例（只说明判断，不是实时事实或固定编号路由）
@@ -16,12 +16,12 @@
 | 对象 | 当时事实与路由 | 合格回报 |
 |---|---|---|
 | #524 difftastic Draft | 四路评论只有通知、无有效技术建议 | 114 tests 通过、无改动；Draft 不擅自转 ready |
-| #525 | 已有 follow-up 覆盖反馈 | 复用独立 PR，列覆盖提交，不重复实现/提 PR |
+| #525 | 已有 follow-up 覆盖反馈 | 复用已有评审，列覆盖提交，不重复实现或另开评审 |
 | #526 滚动 review | 有效问题仍需真实修复 | 对应 workspace Pi 修复，报告剩余视觉边界 |
 | #527 viewed toggle | 独立问题 | 独立分支/worktree，不带回滚动或 difftastic 改动 |
 | 公共 CI | 另建 `fix/ci-audit-browser` worktree | 对应 workspace Pi 读失败日志、验证公共根因并修复 |
 
-使用时一律重新核实 PR、分支、评论和 CI；不从本例推出授权，不写死个人路径/会话。
+使用时一律重新核实评审、分支、评论和 CI；不从本例推出授权，不写死个人路径/会话。
 
 ## 文档验收清单
 
@@ -37,10 +37,11 @@
 | agent 在 worktree 中，但用户明确要求它改为协调者并另开执行者 | 允许通过角色门禁；先交清原写入所有权，避免两个 writer |
 | 只知道 cwd 是 worktree，角色信息缺失 | 不据此判为 worker 或协调者；依据当前授权与交接判定，确实不清才澄清 |
 | 用户明确启用流程，只授权改代码测试 | 先 wt 建/复用 worktree，再匹配 workspace 并给 agent 派单；协调者不修代码，不自动发布 |
-| GitLab/其它平台，现有工具为 glab/API/MCP | 沿用实际工具与 host；不要求 gh，不套用 GitHub 参数 |
-| 无 PR/MR 的独立任务 | 跳过平台取证，先 Worktrunk 后对应 workspace agent，不为派单先创建 PR/MR |
+| 仓库已有平台读取工具 | 沿用该工具与 host；不套用另一平台的参数 |
+| 无评审的独立任务 | 跳过平台取证，先 Worktrunk 后对应 workspace agent，不为派单先创建评审 |
 | 只有一个共享原工作区 workspace | 先用 Worktrunk 建隔离工作树，再定位/打开该路径 workspace，不能先派单再补隔离 |
-| 已有独立 PR、已有 follow-up 或已有 worktree | 核实并复用，不重复 PR/检出 |
+| 已有独立评审、已有 follow-up 或已有 worktree | 核实并复用，不重复开评审、不重复检出 |
+| 新建 branch 或 pane | 名字能读出工作单元；已有 branch/pane 保持原名，不用随机串或纯编号 |
 | 用户 staged + unstaged + untracked 混合改动 | 保留现场；拆分前完整备份且各项有归属 |
 | 拆分要 cherry-pick 但未授权生成提交 | 停止确认或仅准备未提交 diff，不悄悄生成提交 |
 | 移植依赖 feature 的模型/docs | 由目标 Pi 做最小适配或报告依赖，不能全带回 |
@@ -59,4 +60,4 @@
 | 用户后续授权 commit/push | 发给同一 owner，由它重新核实状态并执行授权阶段 |
 
 检查 frontmatter 的 name 与目录一致、description 正反触发边界明确、所有相对链接可达；
-文档检查通过不等于已做真实 PR/CI/live-test 验证。
+文档检查通过不等于已做真实评审、CI 或 live-test 验证。

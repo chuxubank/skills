@@ -1,4 +1,4 @@
-# 按平台取证（仅涉及 PR/MR、评论或 CI 时读取）
+# 按平台取证（仅涉及评审、评论或 CI 时读取）
 
 本文件定义要取得的事实，不指定平台 CLI。工作流始终先经 Worktrunk 建立/复用 worktree，
 再向对应 Luvus workspace 的 agent 派单；平台取证不能变成委派流程的工具绑定。
@@ -6,21 +6,20 @@
 ## 选择实际平台与读取工具
 
 1. 从 remote、用户 URL 和项目规范确定 host、项目及 source/head 与 target/base 仓库身份；
-   区分云服务、自托管实例和 fork，不仅凭 PR/MR 叫法猜平台。
-2. 复用项目现有且已认证的 CLI、API 或 MCP。例如 GitHub 可用 `gh`，GitLab 可用 `glab`，
-   其它平台用其对应工具；不为此安装工具或切换全局默认 host/账号。
+   区分云服务、自托管实例和 fork，不凭口头对评审的叫法猜平台。
+2. 复用项目现有且已认证的读取工具。不为此安装工具或切换全局默认 host/账号。
 3. 查对应 skill/实际版本帮助，确认只读命令、分页和字段覆盖。能力不足时补用同平台 API，
    不把不同 CLI 的参数互换；认证/权限/分页失败明确报告阻塞。
 4. 输出任务实际需要的事实，不要求协调者或 worker 机械调用某个固定命令。
-   没有相关 PR/MR 或 CI 的独立任务跳过本文件，不为满足模板制造平台对象。
+   没有相关评审或 CI 的独立任务跳过本文件，不为满足模板制造平台对象。
 
-## PR/MR 身份与复用（协调者）
+## 评审身份与复用（协调者）
 
 取得 URL/编号、host/项目、open/closed/merged、Draft、target/base 与 source/head 分支、
-两侧仓库及 SHA、commits/follow-up、更新时间。查询相关分支所有状态的现有 PR/MR，
+两侧仓库及 SHA、commits/follow-up、更新时间。查询相关分支所有状态的现有评审，
 完整分页查重；不能只看 open 项或截断列表。
 
-核对实际 fork/source ref、平台返回的 source/head SHA、本地 tip。已有独立 PR/MR 或
+核对实际 fork/source ref、平台返回的 source/head SHA、本地 tip。已有独立评审或
 follow-up 已覆盖反馈时复用；merged/closed 不是重开/新建授权。记录查询时间，
 后续 CI 绑定具体 SHA。对象不存在或平台不可读时如实标记，不能虚构 URL 或“已更新”。
 
@@ -32,7 +31,7 @@ follow-up 已覆盖反馈时复用；merged/closed 不是重开/新建授权。�
 | 平台分支 | 必须覆盖的反馈 |
 |---|---|
 | GitHub | 普通 issue comments、reviews、REST inline review comments、GraphQL reviewThreads（含 resolved/outdated） |
-| GitLab | MR 普通 notes、discussions 及其中全部 notes/replies；覆盖行内 diff 位置、resolved/resolvable 状态与 review/approval 反馈（如有） |
+| GitLab | 评审上的普通 notes、discussions 及其中全部 notes/replies；覆盖行内 diff 位置、resolved/resolvable 状态与 review/approval 反馈（如有） |
 | 其它平台 | 普通评论、review/评审反馈、行内讨论及回复、解决/过期状态的对应资源 |
 
 GitHub 的 reviewThreads 与嵌套 comments、GitLab 的 discussions 与嵌套 notes，以及

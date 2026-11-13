@@ -1,7 +1,7 @@
 # Workspace agent 任务与回报模板
 
 协调者发送前填写全部字段。unknown 要说明由谁核实；阻塞核心身份/授权时先停，不盲派单。
-模板中的 PR/MR、评论、CI 字段仅在相关任务中填写；没有对象时写“不适用/未创建”，
+模板中的评审、评论、CI 字段仅在相关任务中填写；没有对象时写“不适用/未创建”，
 不可虚构 URL，也不为派单先创建平台对象。
 worker 开始前读取目标项目的 AGENTS.md / CLAUDE.md，核实 cwd/branch/tip 和已有改动；
 身份或写入所有权与交接不一致时停止回报，不自行切分支、覆盖目录或接手其它 writer。
@@ -11,11 +11,11 @@ worker 开始前读取目标项目的 AGENTS.md / CLAUDE.md，核实 cwd/branch/
 ```text
 角色：worker（执行者），不是协调者。你是此 worktree 的唯一代码写入者。
 在指定 Luvus workspace 内实现、验证并回报；本交接不授权再建 worktree/agent 或递归委派。
-即使加载 pr-worktree-handoff，也只按 worker 角色执行，不重跑其协调者流程。
+即使加载 worktree-handoff，也只按 worker 角色执行，不重跑其协调者流程。
 发现其它独立 feature/问题时先向 caller 建议拆分；后续“继续实现/修复”不改变你的角色。
 
 对象与路由
-- 工作单元标识与类型（feature/bugfix/CI/review 等）；PR/MR URL/编号（如有）、平台/host、仓库及 source/head 仓库：
+- 工作单元标识与类型（feature/bugfix/CI/review 等）；评审 URL/编号（如有）、平台/host、仓库及 source/head 仓库：
 - 已由 Worktrunk 创建/复用的绝对 cwd、branch、对应 workspace_id、pane_id、agent 名称/kind：
 - 已核实基线 ref/SHA、原 tip/当前 tip、平台 source/head SHA（如适用，含查询时间）：
 - 项目现有平台读取工具/认证 host（如需，不含凭据；不预设 CLI）：
@@ -27,7 +27,7 @@ worker 开始前读取目标项目的 AGENTS.md / CLAUDE.md，核实 cwd/branch/
 - 已核实评论/CI 事实；已执行命令、结果及日志路径：
 - 当前 staged/unstaged/untracked 用户改动、必须保留的文件：
 - 历史拆分时：备份位置、按序移植 commit SHA、commit→问题映射：
-- 已拆出的兄弟 PR/分支及排除文件/提交：禁止顺手带回；依赖不清先报告。
+- 已拆出的兄弟评审或分支及排除文件/提交：禁止顺手带回；依赖不清先报告。
 - 项目规范与相关实现入口：
 
 执行边界
@@ -35,7 +35,7 @@ worker 开始前读取目标项目的 AGENTS.md / CLAUDE.md，核实 cwd/branch/
 - 独占写入 cwd、文件/模块范围；不跨其它 worktree/ref；不改用户无关改动：
 - 允许的本地操作及验证命令：
 - 是否允许本地提交、历史移植生成提交、历史改写（逐项）：
-- 是否允许 push、创建/更新 PR/MR、发平台评论、resolve、merge、清理（逐项）：
+- 是否允许 push、创建/更新评审、发平台评论、resolve、merge、清理（逐项）：
 - 未明确允许的外部动作一律停止。默认只读评论、改代码、测试、汇报，不 commit/push。
 - 评论任务：读取 references/evidence.md 的对应平台分支，全部适用反馈通道分页读完，
   逐条判断有效/已修/不适用/通知/未知；无有效技术评论则不造改动。
@@ -72,7 +72,7 @@ worker 开始前读取目标项目的 AGENTS.md / CLAUDE.md，核实 cwd/branch/
 ## 回报正文
 
 ```text
-done|blocked: <工作单元 / PR/MR 编号（如有） / 阶段>
+done|blocked: <工作单元 / 评审编号（如有） / 阶段>
 - 身份：绝对 cwd、branch、workspace/agent、base/tip、平台 head（如适用）；备份/日志路径
 - 逐条反馈：feature 验收项或问题/comment/thread/discussion ID、CI run/pipeline/job → 结论 → 证据/实现位置
 - 改动文件及行为：无改动 / 有未提交修复 / 已获授权提交发布（列精确 SHA、回读）

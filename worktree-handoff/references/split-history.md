@@ -2,11 +2,11 @@
 
 仅在用户授权拆分已有历史时读取；新独立任务无需走历史重写流程。
 协调者规划/备份，先用 Worktrunk 建立/复用 worktree，再交对应 Luvus workspace 的 agent
-执行移植、依赖适配和验证。PR 包括平台对应的 MR。
+执行移植、依赖适配和验证。
 
 ## 1. 固定事实
 
-- 记录原分支 tip、PR/MR 的 target/base 与 source/head SHA（如有）、push remote 的仓库身份与分支 SHA。
+- 记录原分支 tip、评审的 target/base 与 source/head SHA（如有）、push remote 的仓库身份与分支 SHA。
 - 核实 `upstream` 确实指向目标上游，fetch `upstream main` 后记录 `upstream/main` 的完整 SHA。
   不存在该 remote/main 时先解析真实上游默认分支并确认，不把 fork 的 `origin/main` 当成上游。
 - 独立 bugfix / 公共 CI 分支基于该已核实的 `upstream/main` SHA，不基于混合 feature tip。
@@ -15,7 +15,7 @@
 
 ## 2. 完整备份先于改写
 
-在仓库外的私有备份目录保存清单及恢复说明，避免日志/patch 中的凭据进入 PR。
+在仓库外的私有备份目录保存清单及恢复说明，避免日志/patch 中的凭据进入评审。
 
 1. 用唯一 backup ref 固定每个待改写分支的原 tip；不覆盖已有 backup ref。
    保存 `git bundle create <backup.bundle> --all`，执行 `git bundle verify <backup.bundle>`。
@@ -44,8 +44,8 @@
 
 ## 4. 发布是独立授权阶段
 
-本地拆分不等于允许 commit、push 或提 PR。已有独立 PR 直接复用；创建新 PR 前再次查重。
-更改已发布历史先说明受影响 PR、旧/新 tip、协作者风险及恢复办法，取得明确授权。
+本地拆分不等于允许 commit、push 或开评审。已有独立评审直接复用；创建新评审前再次查重。
+更改已发布历史先说明受影响的评审、旧/新 tip、协作者风险及恢复办法，取得明确授权。
 
 获得 push/历史改写授权后，仅向已核实的仓库和完整 ref 推送，例如：
 
@@ -58,5 +58,5 @@ git push "$PUSH_REMOTE" \
 ```
 
 lease 不匹配就停止并重新审查远端新增工作，不盲 force、不通过刷新期望值直接覆盖。
-push 后回读远端 ref 和平台 PR/MR 的 source/head SHA。二者不一致时报告实际 SHA、时间及 API 阻塞，
-保留备份和现场；不重复 force 或虚报 PR/CI 已更新。平台评论、resolve、merge 另取授权。
+push 后回读远端 ref 和平台评审的 source/head SHA。二者不一致时报告实际 SHA、时间及 API 阻塞，
+保留备份和现场；不重复 force 或虚报评审或 CI 已更新。平台评论、resolve、merge 另取授权。

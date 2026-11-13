@@ -1,19 +1,19 @@
 ---
-name: pr-worktree-handoff
+name: worktree-handoff
 description: >-
   协调者专用：仅在用户明确要求当前 agent 通过 Worktrunk 隔离工作、再委派给对应
-  Luvus workspace 的其它 agent 时使用。工作可为 feature、bugfix、CI 或 PR/MR 反馈。
+  Luvus workspace 的其它 agent 时使用。工作可为 feature、bugfix、CI 或平台评审反馈。
   不因身处 worktree、收到实现任务或读到此流程而触发；已接单 worker 继续本地执行和回报，
   不递归委派。普通 feature 开发、修复和单纯 Git 操作不触发。
 ---
 
-# PR Worktree Handoff
+# Worktree Handoff
 
 独立工作单元（feature / bugfix / CI / review 等）→ **Worktrunk 创建/复用 worktree → 匹配该路径的 Luvus workspace → 向其中的
 agent 派单** → 主动回报。此顺序是流程主轴，先有隔离工作树再委派；不在共享原工作区先派任务。
 
-本 skill 中 PR 同时涵盖平台对应的 MR；不要求已有 PR/MR，也不绑定托管平台或 CLI。
-平台工具由仓库实际情况选择（如 `gh`、`glab` 或现有 API/MCP），不是流程前提。
+平台上对一次变更的评审页称为评审。不要求已有评审，也不为派单创建，流程不绑定某种评审叫法、托管平台或 CLI。
+平台工具用仓库里现有且已认证的那个，不是流程前提。
 worker 默认使用本次约定的 Pi；用户明确指定其它 Luvus agent 时按其授权选择，仍遵守相同所有权。
 
 ## 0. 角色门禁（先于任何编排操作）
@@ -50,7 +50,7 @@ worker 接手。工具/启动失败就保留现场并报告；更换执行方式
 ### 授权账本
 
 逐项记录允许/禁止/待确认：建 worktree 与启动 agent、历史拆分/移植、创建本地提交、
-重写历史、push、创建/更新 PR/MR、发平台评论、resolve threads/discussions、merge、清理。
+重写历史、push、创建/更新评审、发平台评论、resolve threads/discussions、merge、清理。
 “处理评论/修一下”默认只含读评论、改代码、测试和汇报；创建提交及所有发布动作不包含在内。
 历史移植若会生成新提交，也须明确授权。拆分请求不自动包含推送或改写已发布历史。
 
@@ -61,7 +61,7 @@ worker 接手。工具/启动失败就保留现场并报告；更换执行方式
 
 - 开始 worktree 操作前加载 `worktrunk`：它维护 CLI、仓库定位和 hooks 审批规则。
 - 开始 Luvus 操作前加载 `luvus`：它维护会话选择、目标解析和 agent 生命周期。
-- 飞书 Project Bug → GitLab MR / QA / 状态流转使用 `bugfix-delivery`；本 skill 不复制业务门禁。
+- 飞书 Project Bug 的交付、QA 与状态流转使用 `bugfix-delivery`；本 skill 不复制业务门禁。
 - 本 skill 只维护工作隔离与 Luvus agent 交接协议，不替代工具文档，不自动改 hooks/安装集成。
 
 ## 1. 盘点与工作单元路由
@@ -77,16 +77,16 @@ wt list --format=json
 ```
 
 记录 tracked/staged/untracked 用户改动，不整仓 restore/reset、自动 stash 或 `git add .`。
-存在相关 PR/MR 时，按 remote/URL 确认平台、host 与仓库，使用现有且已认证的工具读取实际
+存在相关评审时，按 remote/URL 确认平台、host 与仓库，使用现有且已认证的工具读取实际
 状态（含 closed/merged、Draft、base/head 或 target/source 仓库与 SHA、follow-up 提交）。
-不预设 `gh`、`glab` 或 API 语法，不用本地分支名或过时 CI 推断现状。
-只有涉及 PR/MR、评论或 CI 时才读取 [平台取证](references/evidence.md) 的对应分支；
-没有 PR/MR 的 feature 等独立任务直接建立工作路由，不为派单要求先创建 PR/MR。
+不预设平台 CLI 或 API 语法，不用本地分支名或过时 CI 推断现状。
+只有涉及评审、评论或 CI 时才读取 [平台取证](references/evidence.md) 的对应分支；
+没有评审的 feature 等独立任务直接建立工作路由，不为派单要求先创建评审。
 
-形成路由表：`工作单元/类型 | 已有 PR/后续提交 | branch | base/tip SHA | 绝对 cwd | worker | 授权`。
+形成路由表：`工作单元/类型 | 已有评审/后续提交 | branch | base/tip SHA | 绝对 cwd | pane 名 | worker | 授权`。
 按可独立实现、验证与交付的边界拆分，不要求必须已有故障。多个 feature、无关 bugfix、公共 CI
-修复分别安排；同一 feature 的紧密依赖不为并行而强拆。已有独立 PR/后续提交已覆盖时复用，
-不重复提 PR。真实依赖明确列出。**完成标准：每个工作单元有目标与归属，未知事实标为阻塞。**
+修复分别安排；同一 feature 的紧密依赖不为并行而强拆。已有独立评审或后续提交已覆盖时复用，
+不重复开评审。真实依赖明确列出。**完成标准：每个工作单元有目标与归属，未知事实标为阻塞。**
 
 ## 2. 拆分历史与备份（仅已有改动/历史需拆分时）
 
@@ -110,11 +110,15 @@ wt switch "$BRANCH" --no-cd --format=json
 wt switch --create "$BRANCH" --base "$BASE" --no-cd --format=json
 ```
 
+新建 branch 用语义名：类型前缀加能读出工作单元的短主题，并沿用该仓库已有分支的前缀风格，
+例如 `feat/viewed-toggle`、`fix/ci-audit-browser`。已有 branch 保持原名。同名冲突时只加仍能读出差异的最少词；
+不用 `tmp`、`wt`、`agent-<id>`、纯编号或随机串。Worktrunk 用分支名定位 worktree，所以这个名字也是路径名。
+
 已有 worktree 直接用返回的绝对路径，不重复检出，不移动/覆盖占用目录，不用 `--clobber`。
 若 branch 同名但跟踪别的 fork，先停止确认。hooks approval 阻塞时请用户亲自执行
 `wt config approvals add` 审阅；不使用 `--yes` 代批，也不跳过 hooks 绕过信任门禁。
 
-**完成标准：路由表中每个 branch 对应唯一的实际 cwd，已有用户改动及所有权已记录。**
+**完成标准：路由表中每个 branch 对应唯一的实际 cwd；新建 branch 的名字能独立读出工作单元，已有 branch 保持原名；已有用户改动及所有权已记录。**
 
 ## 4. 匹配 Luvus workspace 与 agent
 
@@ -133,32 +137,41 @@ wt switch --create "$BRANCH" --base "$BASE" --no-cd --format=json
 `"$LUVUS_BIN_PATH" workspace open "$WORKTREE_PATH"`。若 hook 尚未完成或身份不明，
 先报告阻塞，不抢建重复 workspace。只在返回缺少身份时补一次定向读取。
 
+`$NAME` 与步骤 3 的分支主题一致，把 `/` 换成 `-`（`fix/ci-audit-browser` → `fix-ci-audit-browser`）。
+名称已被占用时只加仍能区分任务的最少词。
+
 每个目标选择一名 writer：
 
 - 已有闲置、符合用户约定 kind 的 agent，且 cwd、workspace_id、branch 和任务范围匹配：
   复用并记录其名称/ID；默认 Pi，不接管其它 kind 的 agent。
 - 空 shell pane（无前台任务）：默认执行
-  `agent start "$UNIQUE_NAME" --kind pi --pane "$PANE_ID" --timeout 30`；
+  `agent start "$NAME" --kind pi --pane "$PANE_ID" --timeout 30`；
   只有用户明确指定其它 kind 时才替换 `pi`。
 - 若目标就是协调者当前 pane，或需独立 pane：以**目标 workspace** 的已核实 pane 作
-  `--anchor "$ANCHOR_ID"` 启动约定 kind 的 agent，不向自己发自身任务；`--anchor` 与 `--pane` 不混用。
+  `--anchor "$ANCHOR_ID"` 启动约定 kind 的 agent，名称用 `$NAME`，不向自己发自身任务；`--anchor` 与 `--pane` 不混用。
   不支持 anchor 时仅按 `luvus` skill 的兼容路径 split 后启动。
 - busy/blocked/身份未知的 agent 不覆盖、不强制中断；暂停该 worktree 并请用户决定。
 
+本次新建或接管来跑该工作单元的 pane，拿到 id 后立即用 `$NAME` 命名；已有可读出任务的 pane 保留现名，不给无关 pane 改名：
+
+```bash
+"$LUVUS_BIN_PATH" pane name "$NAME" --pane "$PANE_ID"
+```
+
 上述 `agent start` 均用选定的 Luvus 客户端。返回 `ready:true` 就接受身份，不重复轮询。
-**完成标准：路由表有精确 workspace_id / pane_id / agent 名称与 kind，每个 cwd 仅一名 writer。**
+**完成标准：路由表有精确 workspace_id / pane_id / pane 名 / agent 名称与 kind；新建或接管的 pane 与 agent 名称能读出工作单元；每个 cwd 仅一名 writer。**
 
 ## 5. 完整交接，异步退出
 
 逐 worker 读取并填写 [任务与回报模板](references/handoff.md)。所有必填项都已给出事实或
-明确的“未知/须核实”；不得只发“修一下这个 PR”。保留 prompt 的换行、引号、`$` 等为参数，
+明确的“未知/须核实”；不得只发“修一下这个评审”。保留 prompt 的换行、引号、`$` 等为参数，
 不套额外 `sh -c`，不向终端注入 Enter。
 
 ```bash
 "$LUVUS_BIN_PATH" agent send "$WORKER_NAME" "$TASK"
 ```
 
-直接发送、不加 `--wait`。入队成功后报告派给谁、哪个工作单元/PR/MR 与 cwd、授权边界，然后结束当前轮。
+直接发送、不加 `--wait`。入队成功后报告派给谁、哪个工作单元/评审与 cwd、授权边界，然后结束当前轮。
 多项派单可在一轮内逐项发送，最后一次入队后即结束；不轮询/读屏等待工作完成。
 `queued/submitted` 只是投递证据。响应丢失先核实，不自动重发可能已经执行的任务。
 若部分发送失败，报告已投递项和阻塞项，不自己接管失败任务。
