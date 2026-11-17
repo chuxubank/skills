@@ -48,9 +48,10 @@
 | 发布历史需改写 / lease 不匹配 | 先解释并取授权；精确 lease；不匹配停止 |
 | wt hooks approval / 路径被占用 | 请用户审阅 / 报告冲突，不 --yes、不覆盖目录 |
 | post-start 已建 workspace / hook 尚在进行 | 精确 cwd/id 复用 / 澄清状态，不抢建重复 workspace |
-| managed pane 同时存在 debug/生产会话 | 沿用继承 binary/socket/caller，不切默认 |
-| 目标 pane 是协调者 / busy Pi | 目标 workspace 内独立 anchor pane / 暂停该项，不给自己任务或覆盖 busy |
-| start ready:true / send queued | 分别接受身份 / 报告已派单并结束，不循环查状态、不当完成 |
+| managed pane 同时存在 debug/生产会话 | 按 luvus skill 沿用继承会话，不切默认 |
+| 目标 pane 是协调者 / busy Pi | 目标 workspace 内按 luvus skill 另开 pane / 暂停该项，不给自己任务或覆盖 busy |
+| Luvus 报告名字已被占用 | 按 luvus skill 处理该 pane 的别名；不当作已有 writer，不新建 pane、不改名绕过、不换 session |
+| 启动已就绪 / 发送已入队 | 按 luvus skill 接受身份或投递证据，然后结束；不循环查状态、不当完成 |
 | 启动失败、发送响应丢失 | 报告阻塞/核实是否入队，不自己修、不盲重发 |
 | 普通评论无问题，但 inline thread/discussion 有有效问题 | 完整读取该平台所有适用反馈通道后修复，不只看评论摘要 |
 | 所有适用通道只有通知 / 机器人建议不适用 | 无改动完成 / 给具体理由，不造改动 |

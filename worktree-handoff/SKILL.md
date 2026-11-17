@@ -60,7 +60,7 @@ worker 接手。工具/启动失败就保留现场并报告；更换执行方式
 ### 与其它 skills 的边界
 
 - 开始 worktree 操作前加载 `worktrunk`：它维护 CLI、仓库定位和 hooks 审批规则。
-- 开始 Luvus 操作前加载 `luvus`：它维护会话选择、目标解析和 agent 生命周期。
+- 开始 Luvus 操作前读取 `luvus` 并按其执行。会话、客户端、workspace、pane、agent 的命令和错误含义以该 skill 为准；本 skill 不复制这些内容。
 - 飞书 Project Bug 的交付、QA 与状态流转使用 `bugfix-delivery`；本 skill 不复制业务门禁。
 - 本 skill 只维护工作隔离与 Luvus agent 交接协议，不替代工具文档，不自动改 hooks/安装集成。
 
@@ -122,44 +122,16 @@ wt switch --create "$BRANCH" --base "$BASE" --no-cd --format=json
 
 ## 4. 匹配 Luvus workspace 与 agent
 
-仅在步骤 3 已确认 worktree 实际路径后进入本步。workspace open 只登记/打开该 worktree，
-不能代替 Worktrunk 创建工作树。按 `luvus` skill 选择唯一会话。在 managed pane 必须用继承的 `LUVUS_BIN_PATH`、
-`LUVUS_SOCKET_PATH`、`LUVUS_PANE_ID`；不切 debug/默认会话，不用 PATH 客户端替代。
-下例为 managed pane 用法；外部终端按该 skill 解析生产客户端及显式会话。
+仅在步骤 3 已确认 worktree 实际路径后进入本步。打开 workspace 不能代替 Worktrunk 创建工作树。
+查找、打开、命名、启动和核对身份都读取 `luvus` skill 并按其执行。本步不另写 Luvus 命令。
 
-```bash
-"$LUVUS_BIN_PATH" workspace list
-"$LUVUS_BIN_PATH" pane list
-```
+- 按规范化绝对 cwd 精确匹配 workspace 与 pane，不按列表位置或侧栏顺序猜。Worktrunk post-start 已创建的 workspace 复用；身份不明先报告阻塞，不抢建重复 workspace。
+- 每个目标只选一名 writer。已有闲置、kind 与 cwd、任务范围都匹配的 agent 复用。默认 Pi；只有用户明确指定其它 kind 才更换，不接管其它 kind。
+- pane 与 agent 使用同一语义名：与步骤 3 的分支主题一致，把 `/` 换成 `-`。已有能读出任务的名字保留。别的 pane 已经占用该名字时，才加仍能区分任务的最少词。名字如何登记、如何启动、别名冲突怎么处理，以 `luvus` skill 为准。
+- 目标就是协调者当前 pane 时，不把自身任务派给自己；需要独立 pane 时，按 `luvus` skill 在目标 workspace 里启动。
+- busy、blocked 或身份未知的 agent 不覆盖、不强制中断；暂停该 worktree 并请用户决定。启动失败保留现场并报告，不擅自更换执行方式。
 
-一次 inventory 按规范化绝对 cwd → workspace_id → pane_id 精确匹配，复用现有结果，
-不按列表位置/侧栏顺序猜。Worktrunk post-start 已创建 workspace 则复用；确实缺失才执行
-`"$LUVUS_BIN_PATH" workspace open "$WORKTREE_PATH"`。若 hook 尚未完成或身份不明，
-先报告阻塞，不抢建重复 workspace。只在返回缺少身份时补一次定向读取。
-
-`$NAME` 与步骤 3 的分支主题一致，把 `/` 换成 `-`（`fix/ci-audit-browser` → `fix-ci-audit-browser`）。
-名称已被占用时只加仍能区分任务的最少词。
-
-每个目标选择一名 writer：
-
-- 已有闲置、符合用户约定 kind 的 agent，且 cwd、workspace_id、branch 和任务范围匹配：
-  复用并记录其名称/ID；默认 Pi，不接管其它 kind 的 agent。
-- 空 shell pane（无前台任务）：默认执行
-  `agent start "$NAME" --kind pi --pane "$PANE_ID" --timeout 30`；
-  只有用户明确指定其它 kind 时才替换 `pi`。
-- 若目标就是协调者当前 pane，或需独立 pane：以**目标 workspace** 的已核实 pane 作
-  `--anchor "$ANCHOR_ID"` 启动约定 kind 的 agent，名称用 `$NAME`，不向自己发自身任务；`--anchor` 与 `--pane` 不混用。
-  不支持 anchor 时仅按 `luvus` skill 的兼容路径 split 后启动。
-- busy/blocked/身份未知的 agent 不覆盖、不强制中断；暂停该 worktree 并请用户决定。
-
-本次新建或接管来跑该工作单元的 pane，拿到 id 后立即用 `$NAME` 命名；已有可读出任务的 pane 保留现名，不给无关 pane 改名：
-
-```bash
-"$LUVUS_BIN_PATH" pane name "$NAME" --pane "$PANE_ID"
-```
-
-上述 `agent start` 均用选定的 Luvus 客户端。返回 `ready:true` 就接受身份，不重复轮询。
-**完成标准：路由表有精确 workspace_id / pane_id / pane 名 / agent 名称与 kind；新建或接管的 pane 与 agent 名称能读出工作单元；每个 cwd 仅一名 writer。**
+**完成标准：路由表有精确 workspace、pane、名称与 kind；名称能读出工作单元；每个 cwd 仅一名 writer。**
 
 ## 5. 完整交接，异步退出
 
@@ -167,13 +139,9 @@ wt switch --create "$BRANCH" --base "$BASE" --no-cd --format=json
 明确的“未知/须核实”；不得只发“修一下这个评审”。保留 prompt 的换行、引号、`$` 等为参数，
 不套额外 `sh -c`，不向终端注入 Enter。
 
-```bash
-"$LUVUS_BIN_PATH" agent send "$WORKER_NAME" "$TASK"
-```
-
-直接发送、不加 `--wait`。入队成功后报告派给谁、哪个工作单元/评审与 cwd、授权边界，然后结束当前轮。
-多项派单可在一轮内逐项发送，最后一次入队后即结束；不轮询/读屏等待工作完成。
-`queued/submitted` 只是投递证据。响应丢失先核实，不自动重发可能已经执行的任务。
+按 `luvus` skill 直接发送，不等待对方做完。入队成功后报告派给谁、哪个工作单元/评审与 cwd、授权边界，然后结束当前轮。
+多项派单可在一轮内逐项发送，最后一次入队后即结束；不轮询、不读屏等待工作完成。
+发送结果是否只是入队，按 `luvus` skill 判断。响应丢失先核实，不自动重发可能已经执行的任务。
 若部分发送失败，报告已投递项和阻塞项，不自己接管失败任务。
 
 ## 6. 汇总主动回报

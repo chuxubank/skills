@@ -45,8 +45,7 @@ worker 开始前读取目标项目的 AGENTS.md / CLAUDE.md，核实 cwd/branch/
 
 完成或阻塞
 - 按“回报正文”逐项反馈；无改动也是有效结果，缺权限/平台明确写未验证。
-- 使用继承客户端向上面的 caller 主动回报：
-  "$LUVUS_BIN_PATH" agent send "<CALLER_PANE_OR_NAME>" "done|blocked: <证据和下一步>"
+- 按 `luvus` skill，用继承的会话向 caller 主动回报，不等待。
 - 回报失败保留结果并说明投递阻塞，不切会话、不报已送达。
 ```
 
@@ -60,11 +59,8 @@ worker 开始前读取目标项目的 AGENTS.md / CLAUDE.md，核实 cwd/branch/
   可限制 `CARGO_BUILD_JOBS=2`；不得把不同分支二进制安装/复制到同一共享路径。
 - live tests 使用本 worktree 刚构建的精确绝对 binary，记录实际路径和 SHA；
   不调用 PATH 中可能被别的 worker 覆盖的 binary。
-- 测试子进程用独立临时 `LUVUS_HOME` 和唯一 session，清除继承的 socket/session
-  selectors 及 pane/caller 身份；按项目测试 harness 和已安装 CLI 的实际变量清单核实，
-  包括 `LUVUS_SOCKET_PATH`、`LUVUS_API_ADDRESS`、`LUVUS_SESSION`、`LUVUS_PANE_ID`、
-  `LUVUS_ENV` 等。先证明测试命令不会落到用户会话，再运行。
-- 只对子进程清除/覆盖测试环境；worker 回报仍用原来继承的 `LUVUS_BIN_PATH` 和会话。
+- 测试子进程不得连上用户正在使用的 Luvus 会话。隔离哪些会话变量，按 `luvus` skill 的会话选择执行；先证明测试命令不会落到用户会话，再运行。
+- 只对子进程隔离；worker 回报仍用原来继承的会话。
 - 只清理自己创建的临时目录、session、PID/测试进程；不用全局 pkill/killall 或默认
   `server stop`。不得控制生产服务器生命周期，普通编译测试不停止用户预览。
 - 无法保证隔离则停止 live tests，报告未验证和所需条件，不静默连接生产环境。
