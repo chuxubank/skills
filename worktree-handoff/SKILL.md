@@ -59,21 +59,20 @@ worker 接手。工具/启动失败就保留现场并报告；更换执行方式
 
 ### 与其它 skills 的边界
 
-- 开始 worktree 操作前加载 `worktrunk`：它维护 CLI、仓库定位和 hooks 审批规则。
+- 开始 worktree 操作前读取 `worktrunk` 并按其执行。仓库定位、命令、flags 和 hooks 审批以该 skill 为准；本 skill 不复制这些内容。
 - 开始 Luvus 操作前读取 `luvus` 并按其执行。会话、客户端、workspace、pane、agent 的命令和错误含义以该 skill 为准；本 skill 不复制这些内容。
 - 飞书 Project Bug 的交付、QA 与状态流转使用 `bugfix-delivery`；本 skill 不复制业务门禁。
 - 本 skill 只维护工作隔离与 Luvus agent 交接协议，不替代工具文档，不自动改 hooks/安装集成。
 
 ## 1. 盘点与工作单元路由
 
-只读检查原工作区及候选已有 worktree：
+只读检查原工作区。已有 worktree 按 `worktrunk` skill 列出，不在这里写它的命令：
 
 ```bash
 git status --short --branch
 git branch -vv
 git remote -v
 git log -12 --oneline --decorate
-wt list --format=json
 ```
 
 记录 tracked/staged/untracked 用户改动，不整仓 restore/reset、自动 stash 或 `git add .`。
@@ -101,22 +100,15 @@ wt list --format=json
 
 ## 3. 建立或复用 Worktrunk worktree
 
-复用步骤 1 的 `wt list`；仅状态变化才刷新。在目标仓库运行：
-
-```bash
-# 已有 branch 尚无 worktree（远端同名分支须先核实仓库身份）
-wt switch "$BRANCH" --no-cd --format=json
-# 新工作单元（包括 feature），BASE 为已核实基线 ref 或 SHA
-wt switch --create "$BRANCH" --base "$BASE" --no-cd --format=json
-```
+创建、复用和定位 worktree，以及 hooks 审批，都读取 `worktrunk` skill 并按其执行。本步不另写 Worktrunk 命令。
+复用步骤 1 已经看到的列表；仅状态变化才再查。
 
 新建 branch 用语义名：类型前缀加能读出工作单元的短主题，并沿用该仓库已有分支的前缀风格，
 例如 `feat/viewed-toggle`、`fix/ci-audit-browser`。已有 branch 保持原名。同名冲突时只加仍能读出差异的最少词；
 不用 `tmp`、`wt`、`agent-<id>`、纯编号或随机串。Worktrunk 用分支名定位 worktree，所以这个名字也是路径名。
 
-已有 worktree 直接用返回的绝对路径，不重复检出，不移动/覆盖占用目录，不用 `--clobber`。
-若 branch 同名但跟踪别的 fork，先停止确认。hooks approval 阻塞时请用户亲自执行
-`wt config approvals add` 审阅；不使用 `--yes` 代批，也不跳过 hooks 绕过信任门禁。
+已有 worktree 直接用它的绝对路径，不重复检出，不移动或覆盖占用目录。
+branch 同名但跟踪别的 fork 时，先停止确认。hooks 需要审批时按 `worktrunk` skill 交给用户审阅，不代批，也不绕过信任门禁。
 
 **完成标准：路由表中每个 branch 对应唯一的实际 cwd；新建 branch 的名字能独立读出工作单元，已有 branch 保持原名；已有用户改动及所有权已记录。**
 
