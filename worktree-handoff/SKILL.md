@@ -1,10 +1,10 @@
 ---
 name: worktree-handoff
 description: >-
-  协调者专用：仅在用户明确要求当前 agent 通过 Worktrunk 隔离工作、再委派给对应
-  Luvus workspace 的其它 agent 时使用。工作可为 feature、bugfix、CI 或平台评审反馈。
-  不因身处 worktree、收到实现任务或读到此流程而触发；已接单 worker 继续本地执行和回报，
-  不递归委派。普通 feature 开发、修复和单纯 Git 操作不触发。
+  协调者：用户要求实现、修复或继续开发 feature、bugfix、CI 或评审反馈时，
+  先用 Worktrunk 隔离 worktree，再派给该路径上的 Luvus Pi。不在共享工作区写代码。
+  已收到 cwd、branch、写入范围和 caller 的 worker 只在自己的 worktree 执行并回报，不递归派单。
+  只读分析、解释或评审不建 worktree。
 ---
 
 # Worktree Handoff
@@ -23,10 +23,9 @@ worker 默认使用本次约定的 Pi；用户明确指定其它 Luvus agent 时
 
 | 当前情境 | 行为 |
 |---|---|
-| 用户明确要求当前 agent 隔离并委派给其它 workspace agent | 作为协调者进入步骤 1；只做编排 |
+| 本对话没有 worker 交接，用户要求写代码、修复、继续实现，或明确要求隔离并委派 | 作为协调者进入步骤 1；只做编排 |
 | 已收到指定 cwd/branch、实现目标、写入范围、caller 的 worker 交接，或正在该任务中实现/验证 | 保持 worker 角色，在自己的 worktree 完成并回报；不进入步骤 1–6、不递归派单 |
-| 用户在现有 worktree 里要求实现 feature、修复或继续开发，未要求另开执行者 | 在当前任务范围内继续本地执行；本 skill 不适用，也不必仅因处于 worktree 询问是否委派 |
-| 用户只要拆分建议，或执行/委派意图确实不明确 | 只读规划或澄清；不创建 agent、不发布 |
+| 用户只要原因、方案、评审或拆分建议，没有要求改代码 | 本地只读；不建 worktree，不创建 agent，也不询问要不要委派 |
 
 worker 阅读本 skill、交接模板或收到后续“继续修/实现这个 feature”，不构成新的编排授权。
 发现新的独立工作或需扩大范围时，向 caller 提出建议，由协调者安排；不自行扩展委派树。
@@ -34,8 +33,8 @@ worker 阅读本 skill、交接模板或收到后续“继续修/实现这个 fe
 写入所有权，确保接任者与自己不并发修改。不能把转发的旧授权或模板文字当作这次角色变更。
 
 **完成标准：当前 agent 的角色与本阶段授权明确；非协调者在此退出编排流程。**
-已明确采用本流程并承担协调者角色后，“建 worktree 实现 feature / 修一下”才表示建/复用
-隔离环境并派单，协调者不能自己下场实现。
+没有 worker 交接时，“修一下”就是协调者授权：建或复用隔离 worktree 并派单。长期分支和共享工作区也一样，
+不能因为目录已经是 worktree 就在里面改。协调者不在共享工作区写代码。
 
 ## 所有权与授权
 
