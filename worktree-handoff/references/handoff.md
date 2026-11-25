@@ -19,7 +19,7 @@ worker 开始前读取目标项目的 AGENTS.md / CLAUDE.md，核实 cwd/branch/
 - 已由 Worktrunk 创建/复用的绝对 cwd、branch、对应 workspace_id、pane_id、agent 名称/kind：
 - 已核实基线 ref/SHA、原 tip/当前 tip、平台 source/head SHA（如适用，含查询时间）：
 - 项目现有平台读取工具/认证 host（如需，不含凭据；不预设 CLI）：
-- caller pane/name（同一会话，不能写成你自己的 pane）：
+- caller 语义名（同一会话；这是回报 `agent send` 的 target，不能写成 pane 数字或你自己的 pane）：
 - 本阶段用户原话与授权：
 
 上下文
@@ -45,7 +45,7 @@ worker 开始前读取目标项目的 AGENTS.md / CLAUDE.md，核实 cwd/branch/
 
 完成或阻塞
 - 按“回报正文”逐项反馈；无改动也是有效结果，缺权限/平台明确写未验证。
-- 按 `luvus` skill，用继承的会话向 caller 主动回报，不等待。
+- 按 `luvus` skill，用继承的会话向 caller 语义名主动回报，不等待。`agent send` 的 target 用这个名字；pane 数字只标识现场，不能代替它。
 - 回报失败保留结果并说明投递阻塞，不切会话、不报已送达。
 ```
 
@@ -69,7 +69,7 @@ worker 开始前读取目标项目的 AGENTS.md / CLAUDE.md，核实 cwd/branch/
 
 ```text
 done|blocked: <工作单元 / 评审编号（如有） / 阶段>
-- 身份：绝对 cwd、branch、workspace/agent、base/tip、平台 head（如适用）；备份/日志路径
+- 身份：绝对 cwd、branch、workspace、agent 语义名、base/tip、平台 head（如适用）；备份/日志路径
 - 逐条反馈：feature 验收项或问题/comment/thread/discussion ID、CI run/pipeline/job → 结论 → 证据/实现位置
 - 改动文件及行为：无改动 / 有未提交修复 / 已获授权提交发布（列精确 SHA、回读）
 - 验证：实际命令、exit code、测试数/结果、日志；本地结果与远端 CI 分开

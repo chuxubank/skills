@@ -57,6 +57,7 @@
 | 所有适用通道只有通知 / 机器人建议不适用 | 无改动完成 / 给具体理由，不造改动 |
 | CI 摘要红叉或旧 tip 的失败 | 获取真实 run/job/log 和 SHA，不能凭摘要修或宣称新 tip 绿 |
 | 多 Rust worker / live tests | 独立 target、精确 binary、测试 HOME/session，生产回报环境不变 |
+| worker 回报 caller | `agent send` 的 target 用交接里的 caller 语义名；pane 数字只标识现场，不能代替这个名字 |
 | worker 未回报 / 回报有未解决视觉边界 | 标未完成 / 保留未验证事实，不虚报全部完成 |
 | 用户后续授权 commit/push | 发给同一 owner，由它重新核实状态并执行授权阶段 |
 
