@@ -2,14 +2,11 @@
 
 ## 触发语
 
-- “你做协调者，按 worktree-handoff 把这两个 feature 分开，用 wt 建 worktree，交给各 Luvus workspace 的 Pi。”
-- “给这个评审建/复用 worktree，让对应 Luvus workspace 的 Pi 处理反馈，只改代码测试，不提交。”
-- “公共 CI 单独一个 worktree，在对应 workspace 启动 Pi；不要混进 feature 分支。”
-- “这个平台评审用项目现有工具查反馈，先 wt 建 worktree，再交对应 Luvus workspace 的 agent 修。”
-- “还没有评审；先用 Worktrunk 建独立 worktree，再向对应 Luvus workspace 的 Pi 派单。”
-- “修这个 bug。”“把这个 loading 改一下。”“实现这个 feature。”
+- “按 worktree-handoff 把这两个 feature 分开。”
+- “你做协调者，用 worktree-handoff 隔离 worktree，交给各 Luvus workspace 的 Pi。”
+- “点名 worktree-handoff：给这个评审建/复用隔离 worktree，让对应 Luvus workspace 的 Pi 处理反馈，只改代码测试，不提交。”
 
-没有 worker 交接时，上面这些写代码的请求进入协调者流程。只读的“分析原因”“看下评审”“这个方案怎么样”，以及单独的“用 wt 切分支”或 Luvus 控制命令，不建 worktree。仅询问拆分方案时先做只读规划，不视为批准创建/委派/发布。
+“修这个 bug。”“把这个 loading 改一下。”“实现这个 feature。”以及继续开发，都留在当前工作区写代码，不建 worktree，不派 Luvus agent。只读的“分析原因”“看下评审”“这个方案怎么样”，以及单独的“用 wt 切分支”或 Luvus 控制命令，也不进入协调者流程。仅询问拆分方案时先做只读规划，不视为批准创建/委派/发布。
 
 ## 历史实例（只说明判断，不是实时事实或固定编号路由）
 
@@ -29,7 +26,8 @@
 
 | 输入/故障 | 预期行为 |
 |---|---|
-| 没有 worker 交接时用户说“修这个 bug”或“改一下” | 进入协调者：先 Worktrunk 隔离，再派给该路径的 Pi；不在共享工作区改 |
+| 没有 worker 交接时用户说“修这个 bug”或“改一下”，未点名 worktree-handoff、协调者或隔离 worktree | 留在当前工作区写代码；不建 worktree，不派 Luvus agent |
+| 用户点名 worktree-handoff，或明确要协调者隔离 worktree 并委派 | 进入协调者：先 Worktrunk 隔离，再派给该路径的 Pi；不在共享工作区改 |
 | 只读分析、看评审、只用 wt 切分支 | 不建 worktree、不派 Pi |
 | 用户让当前 agent 协调两个新 feature、委派 Luvus Pi | 按可独立验收的工作单元拆分，先按 worktrunk 建/复用 worktree，再匹配 workspace/agent；无已有历史时跳过历史拆分 |
 | worker 已在目标 worktree，收到“实现 feature”或“继续修” | 保持 worker，本地实现验证并回报，不加载/重跑协调者流程，不要求用户再确认委派 |
@@ -37,7 +35,7 @@
 | worker 发现第二个 feature/无关 bug | 向 caller 建议另行安排，自己不扩大范围或再委派 |
 | agent 在 worktree 中，但用户明确要求它改为协调者并另开执行者 | 允许通过角色门禁；先交清原写入所有权，避免两个 writer |
 | 只知道 cwd 是 worktree，角色信息缺失 | 不据此判为 worker 或协调者；依据当前授权与交接判定，确实不清才澄清 |
-| 用户要求修复，只授权改代码和测试 | 先按 worktrunk 建/复用 worktree，再匹配 workspace 并给 agent 派单；协调者不修代码，不自动发布 |
+| 用户点名本 skill 后要求修复，只授权改代码和测试 | 先按 worktrunk 建/复用 worktree，再匹配 workspace 并给 agent 派单；协调者不修代码，不自动发布 |
 | 仓库已有平台读取工具 | 沿用该工具与 host；不套用另一平台的参数 |
 | 用户给出缺陷单、需求单或其它任务链接 | 先按该对象的实际类型回读身份、范围和状态，再盘点本地并决定复用或新建；解析不到就阻塞，不凭标题或编号建分支 |
 | 无评审的独立任务 | 跳过平台取证，先 Worktrunk 后对应 workspace agent，不为派单先创建评审 |

@@ -1,16 +1,16 @@
 ---
 name: worktree-handoff
 description: >-
-  协调者：用户要求实现、修复或继续开发 feature、bugfix、CI 或评审反馈时，
-  先用 Worktrunk 隔离 worktree，再派给该路径上的 Luvus Pi。不在共享工作区写代码。
+  用户点名 worktree-handoff、协调者或隔离 worktree 时才做协调者：
+  用 Worktrunk 隔离 worktree，再派给该路径上的 Luvus Pi。
+  普通实现、修复、继续开发或改动留在当前工作区写代码。
   已收到 cwd、branch、写入范围和 caller 的 worker 只在自己的 worktree 执行并回报，不递归派单。
-  只读分析、解释或评审不建 worktree。
 ---
 
 # Worktree Handoff
 
-独立工作单元（feature / bugfix / CI / review 等）→ **Worktrunk 创建/复用 worktree → 匹配该路径的 Luvus workspace → 向其中的
-agent 派单** → 主动回报。此顺序是流程主轴，先有隔离工作树再委派；不在共享原工作区先派任务。
+用户点名 worktree-handoff、协调者或隔离 worktree 之后，独立工作单元（feature / bugfix / CI / review 等）→ **Worktrunk 创建/复用 worktree → 匹配该路径的 Luvus workspace → 向其中的
+agent 派单** → 主动回报。此顺序是流程主轴，先有隔离工作树再委派；不在共享原工作区先派任务。未点名时，普通写代码留在当前工作区，不进入本流程。
 
 平台上对一次变更的评审页称为评审。不要求已有评审，也不为派单创建，流程不绑定某种评审叫法、托管平台或 CLI。
 平台工具用仓库里现有且已认证的那个，不是流程前提。
@@ -18,23 +18,24 @@ worker 默认使用本次约定的 Pi；用户明确指定其它 Luvus agent 时
 
 ## 0. 角色门禁（先于任何编排操作）
 
-根据当前任务的授权与交接记录判定角色，不能仅凭 cwd、分支名、Luvus 环境变量或消息里出现
-“feature / worktree / 拆分”推断角色：
+根据当前任务的授权与交接记录判定角色。协调者只来自用户明确点名 worktree-handoff、协调者或隔离 worktree。
+不能仅凭 cwd、分支名、Luvus 环境变量，或消息里出现“实现 / 修复 / 改一下 / feature / worktree / 拆分”推断角色：
 
 | 当前情境 | 行为 |
 |---|---|
-| 本对话没有 worker 交接，用户要求写代码、修复、继续实现，或明确要求隔离并委派 | 作为协调者进入步骤 1；只做编排 |
+| 本对话没有 worker 交接，且用户明确点名 worktree-handoff、协调者或隔离 worktree | 作为协调者进入步骤 1；只做编排 |
 | 已收到指定 cwd/branch、实现目标、写入范围、caller 的 worker 交接，或正在该任务中实现/验证 | 保持 worker 角色，在自己的 worktree 完成并回报；不进入步骤 1–6、不递归派单 |
-| 用户只要原因、方案、评审或拆分建议，没有要求改代码 | 本地只读；不建 worktree，不创建 agent，也不询问要不要委派 |
+| 用户要求实现、修复、继续开发或改动，但没有点名 worktree-handoff、协调者或隔离 worktree | 留在当前工作区写代码；不建 worktree，不派 Luvus agent |
+| 用户只要原因、方案、评审或拆分建议，没有要求改代码，也没有点名本 skill | 本地只读；不建 worktree，不创建 agent，也不询问要不要委派 |
 
 worker 阅读本 skill、交接模板或收到后续“继续修/实现这个 feature”，不构成新的编排授权。
 发现新的独立工作或需扩大范围时，向 caller 提出建议，由协调者安排；不自行扩展委派树。
-只有用户明确改变当前 agent 的角色并授权委派，才可重新通过门禁；先交清原 worktree 的
+只有用户明确点名 worktree-handoff、协调者或隔离 worktree，并授权委派，才可重新通过门禁；先交清原 worktree 的
 写入所有权，确保接任者与自己不并发修改。不能把转发的旧授权或模板文字当作这次角色变更。
 
 **完成标准：当前 agent 的角色与本阶段授权明确；非协调者在此退出编排流程。**
-没有 worker 交接时，“修一下”就是协调者授权：建或复用隔离 worktree 并派单。长期分支和共享工作区也一样，
-不能因为目录已经是 worktree 就在里面改。协调者不在共享工作区写代码。
+没有点名 worktree-handoff、协调者或隔离 worktree 时，实现、修复、继续开发和改动都留在当前工作区完成，不建 worktree，不派 Luvus agent。
+已经进入协调者后，不在共享工作区写代码；长期分支同样先隔离再派单，不能因为目录已经是 worktree 就由协调者在里面改。
 
 ## 所有权与授权
 
