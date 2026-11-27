@@ -28,9 +28,13 @@ the root. Keep fixtures out of the skill directory. Keys, the client
 config, and logs stay in the run directory.
 
 Intercept only environments the user authorized. `hosts.json` is a list of
-regular expressions, each matched against the whole hostname. A missing or
-empty file ignores the host. Route patterns match the path and query, not
-the scheme or host.
+regular expressions, each full-matched against the hostname, ignoring case.
+A missing or empty file does not filter hosts: every TLS connection is
+intercepted, and every request is eligible for routes. A non-empty file
+intercepts TLS and QUIC only when the ClientHello SNI full-matches one
+pattern. Other TLS is forwarded unmodified and still uses the tunnel. A
+ClientHello with no SNI is not intercepted. Route patterns match the path
+and query, not the scheme or host.
 
 ## Prepare the profile
 
@@ -96,10 +100,11 @@ printed `Endpoint` and `DNS`. A QR, if they want one, goes in `$RUN` via
 
 The device connects with that config. The printed `AllowedIPs` is a full
 tunnel: the device's other traffic uses this machine until they disconnect.
-For HTTPS, install the mitmproxy CA from `http://mitm.it` while the tunnel is
-up, then enable trust. On iOS that is Certificate Trust Settings. On Android
-the app must trust the user CA. The cert files are
-`~/.mitmproxy/mitmproxy-ca-cert.pem` and `.cer`.
+A non-empty `hosts.json` does not change that route. It only skips TLS
+interception for other names. For an intercepted HTTPS host, install the
+mitmproxy CA from `http://mitm.it` while the tunnel is up, then enable trust.
+On iOS that is Certificate Trust Settings. On Android the app must trust the
+user CA. The cert files are `~/.mitmproxy/mitmproxy-ca-cert.pem` and `.cer`.
 
 ## Watch the client
 
@@ -110,8 +115,10 @@ intended fixture, and the client UI matches that fixture.
 When the log says the client does not trust the proxy certificate, stop. Ask
 for a build that trusts the user CA. Leave certificate pinning in place.
 
-When that URL never appears, report a tunnel miss. The client result is not
-evidence about the product.
+When the log says `tls passthrough`, that host is outside `hosts.json`. The
+client result for it is not evidence about a mock. When that URL never
+appears and there is no passthrough line, report a tunnel miss. The client
+result is not evidence about the product.
 
 ## Stop
 

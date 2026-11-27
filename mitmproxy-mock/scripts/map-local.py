@@ -11,7 +11,11 @@ HOST_ENV. If both are empty, startup fails.
 Layout of the profile directory:
   hosts.json      Optional list of regular expressions. Each is full-matched
                   against the hostname, ignoring case. Missing or [] ignores
-                  the host. A dot in a hostname must be escaped.
+                  the host and intercepts every TLS connection. A non-empty
+                  list intercepts TLS and QUIC only for a ClientHello SNI
+                  that full-matches one pattern. Any other SNI, and a
+                  ClientHello with no SNI, is forwarded unmodified. A dot
+                  in a hostname must be escaped.
   routes.json     Route list. Required, may be [].
   data/           Fixture files named by routes.
   handlers.py     Optional, and the only Python file loaded. Functions
@@ -28,6 +32,8 @@ routes.json entries:
                   the proxy while it sleeps.
 
 The first matching route owns the request. No match stays pass-through.
+A TLS connection outside hosts.json never reaches a route. Its log line is
+`tls passthrough sni=<name>`, or `sni=-` when the ClientHello has no SNI.
 A custom handler that returns without interceptor.respond leaves that request
 pass-through and does not try later routes. A handler exception becomes
 HTTP 500.
@@ -54,7 +60,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from mitmproxy import ctx, http
+from mitmproxy import ctx, http, tls
 
 DEFAULT_HEADERS = {"Content-Type": "application/json; charset=utf-8"}
 
@@ -198,6 +204,13 @@ class Interceptor:
             f"handlers={list(self.handlers) or '(none)'}"
         )
 
+    def allows_host(self, host: str | None) -> bool:
+        if not self.hosts:
+            return True
+        if not host:
+            return False
+        return any(pattern.fullmatch(host) for pattern in self.hosts)
+
     def respond(
         self,
         flow: http.HTTPFlow,
@@ -235,8 +248,7 @@ class Interceptor:
 
     def process(self, flow: http.HTTPFlow):
         ctx.log.info(f"--> {flow.request.method} {flow.request.pretty_url}")
-        host = flow.request.pretty_host
-        if self.hosts and not any(pattern.fullmatch(host) for pattern in self.hosts):
+        if not self.allows_host(flow.request.pretty_host):
             return
         for rule in self.routes:
             if not rule.compiled_pattern.search(flow.request.path):
@@ -275,6 +287,15 @@ class ProfileMock:
         if self.interceptor is None:
             raise RuntimeError("mock profile is not loaded")
         self.interceptor.process(flow)
+
+    def tls_clienthello(self, data: tls.ClientHelloData) -> None:
+        if self.interceptor is None:
+            raise RuntimeError("mock profile is not loaded")
+        sni = data.client_hello.sni
+        if self.interceptor.allows_host(sni):
+            return
+        data.ignore_connection = True
+        ctx.log.info(f"tls passthrough sni={sni or '-'}")
 
 
 addons = [ProfileMock()]
