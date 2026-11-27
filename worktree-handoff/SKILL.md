@@ -125,11 +125,13 @@ branch 同名但跟踪别的 fork 时，先停止确认。hooks 需要审批时�
 
 - 按规范化绝对 cwd 精确匹配 workspace 与 pane，不按列表位置或侧栏顺序猜。Worktrunk post-start 已创建的 workspace 复用；身份不明先报告阻塞，不抢建重复 workspace。
 - 每个目标只选一名 writer。已有闲置、kind 与 cwd、任务范围都匹配的 agent 复用。默认 Pi；只有用户明确指定其它 kind 才更换，不接管其它 kind。
-- pane 与 agent 使用同一语义名：与步骤 3 的分支主题一致，把 `/` 换成 `-`。已有能读出任务的名字保留。别的 pane 已经占用该名字时，才加仍能区分任务的最少词。名字如何登记、如何启动、别名冲突怎么处理，以 `luvus` skill 为准。
+- 协调者先给自己的 pane 命名，作为 caller 语义名：`lead-` 加上自己 cwd 的当前分支，并把分支名里的 `/` 换成 `-`，例如 `main` → `lead-main`，`feat/viewed-toggle` → `lead-feat-viewed-toggle`。已是这个名字则保留。没有分支名时停止并报告。
+- worker 的 pane 与 agent 使用同一语义名：`worker-` 加上步骤 3 的分支主题，并把分支名里的 `/` 换成 `-`，例如 `feat/viewed-toggle` → `worker-feat-viewed-toggle`。已是这个名字则保留。别的 pane 已经占用该名字时，才在末尾加仍能区分任务的最少词。
+- 名字如何登记、如何启动、别名冲突怎么处理，以 `luvus` skill 为准。
 - 目标就是协调者当前 pane 时，不把自身任务派给自己；需要独立 pane 时，按 `luvus` skill 在目标 workspace 里启动。
 - busy、blocked 或身份未知的 agent 不覆盖、不强制中断；暂停该 worktree 并请用户决定。启动失败保留现场并报告，不擅自更换执行方式。
 
-**完成标准：路由表有精确 workspace、pane、名称与 kind；名称能读出工作单元；每个 cwd 仅一名 writer。**
+**完成标准：路由表有精确 workspace、pane、名称与 kind；worker pane 的名字是 `worker-` 加上该工作单元分支（`/` 换成 `-`）；协调者 pane 的名字是 `lead-` 加上自己 cwd 的当前分支（`/` 换成 `-`）；每个 cwd 仅一名 writer。**
 
 ## 5. 完整交接，异步退出
 
@@ -137,7 +139,7 @@ branch 同名但跟踪别的 fork 时，先停止确认。hooks 需要审批时�
 明确的“未知/须核实”；不得只发“修一下这个评审”。保留 prompt 的换行、引号、`$` 等为参数，
 不套额外 `sh -c`，不向终端注入 Enter。
 
-回报地址是 caller 的语义名。发送前按 `luvus` skill 确认该名字已登记，并写入交接；worker 的 `agent send` target 用这个名字，pane 数字只标识现场，不能代替它。
+回报地址是步骤 4 登记的 caller 语义名。发送前按 `luvus` skill 确认该名字仍在协调者自己的 pane 上，并写入交接；worker 的 `agent send` target 用这个名字，pane 数字只标识现场，不能代替它。
 
 按 `luvus` skill 直接发送，不等待对方做完。入队成功后报告派给谁、哪个工作单元/评审与 cwd、授权边界，然后结束当前轮。
 多项派单可在一轮内逐项发送，最后一次入队后即结束；不轮询、不读屏等待工作完成。

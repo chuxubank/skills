@@ -41,7 +41,9 @@
 | 无评审的独立任务 | 跳过平台取证，先 Worktrunk 后对应 workspace agent，不为派单先创建评审 |
 | 只有一个共享原工作区 workspace | 先用 Worktrunk 建隔离工作树，再定位/打开该路径 workspace，不能先派单再补隔离 |
 | 已有独立评审、已有 follow-up 或已有 worktree | 核实并复用，不重复开评审、不重复检出 |
-| 新建 branch 或 pane | 名字能读出工作单元；已有 branch/pane 保持原名，不用随机串或纯编号 |
+| 新建 branch | 语义名能读出工作单元；已有 branch 保持原名，不用随机串或纯编号 |
+| worker pane | `worker-` 加该工作单元分支主题，`/` 换成 `-`；已是该名则保留；占用时在末尾加最少区分词 |
+| 协调者给自己的 pane 命名 | `lead-` 加自己 cwd 的当前分支，`/` 换成 `-`；已是该名则保留；没有分支名则停止 |
 | 用户 staged + unstaged + untracked 混合改动 | 保留现场；拆分前完整备份且各项有归属 |
 | 拆分要 cherry-pick 但未授权生成提交 | 停止确认或仅准备未提交 diff，不悄悄生成提交 |
 | 移植依赖 feature 的模型/docs | 由目标 Pi 做最小适配或报告依赖，不能全带回 |

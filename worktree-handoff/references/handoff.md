@@ -16,10 +16,10 @@ worker 开始前读取目标项目的 AGENTS.md / CLAUDE.md，核实 cwd/branch/
 
 对象与路由
 - 工作单元标识与类型（feature/bugfix/CI/review 等）；评审 URL/编号（如有）、平台/host、仓库及 source/head 仓库：
-- 已由 Worktrunk 创建/复用的绝对 cwd、branch、对应 workspace_id、pane_id、agent 名称/kind：
+- 已由 Worktrunk 创建/复用的绝对 cwd、branch、对应 workspace_id、pane_id、agent 名称/kind（`worker-` 加该分支主题，`/` 换成 `-`）：
 - 已核实基线 ref/SHA、原 tip/当前 tip、平台 source/head SHA（如适用，含查询时间）：
 - 项目现有平台读取工具/认证 host（如需，不含凭据；不预设 CLI）：
-- caller 语义名（同一会话；这是回报 `agent send` 的 target，不能写成 pane 数字或你自己的 pane）：
+- caller 语义名（`lead-` 加协调者 cwd 的当前分支，`/` 换成 `-`；同一会话；这是回报 `agent send` 的 target，不能写成 pane 数字或你自己的 pane）：
 - 本阶段用户原话与授权：
 
 上下文
